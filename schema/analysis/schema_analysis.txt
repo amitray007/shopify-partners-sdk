@@ -1,0 +1,508 @@
+SHOPIFY PARTNERS API - GRAPHQL SCHEMA ANALYSIS
+==================================================
+Generated from: ../versions/unstable/introspection.json
+Analysis Date: 2025-09-14 05:27:54
+
+SUMMARY STATISTICS
+==============================
+Total Types: 109
+Total Queries: 9
+Total Mutations: 3
+Connection Types: 5
+Enum Types: 12
+
+Types by Kind:
+  ENUM: 12
+  INPUT_OBJECT: 2
+  INTERFACE: 9
+  OBJECT: 78
+  SCALAR: 7
+  UNION: 1
+
+DETAILED ANALYSIS
+==================================================
+
+QUERIES (9)
+====================
+
+============================================================
+QUERY: app
+============================================================
+Description:
+  A Shopify [app](/concepts/apps).
+
+Arguments (1):
+  • id
+    Description: The app ID. Example value: `gid://partners/App/1234`.
+    Type: ID!
+    Kind: SCALAR
+    Required: Yes
+
+Return Type:
+  Type: App
+  Kind: OBJECT
+  Description: A Shopify [app](/concepts/apps).
+  Fields:
+    - apiKey: String
+      Description: A unique application API identifier.
+    - events: AppEventConnection
+      Description: A list of app events.
+    - id: ID
+      Description: The ID of the app. Example value: `gid://partners/App/1234`.
+    - name: String
+      Description: The name of the app.
+
+============================================================
+QUERY: conversation
+============================================================
+Description:
+  A conversation with a merchant through the Experts Marketplace.
+DEPRECATED
+  Reason: No longer supported (2024-01).
+
+Arguments (1):
+  • id
+    Description: The conversation ID. Example value: `gid://partners/Conversation/1234`.
+    Type: ID!
+    Kind: SCALAR
+    Required: Yes
+
+Return Type:
+  Type: Conversation
+  Kind: OBJECT
+  Description: A conversation with a merchant through the Experts Marketplace.
+  Fields:
+    - createdAt: DateTime
+      Description: The date and time the conversation was started.
+    - dashboardUrl: Url
+      Description: The URL to access this conversation in the Partner Dashboard.
+    - hasUnreadMessages: Boolean
+      Description: Whether the conversation has unread messages.
+    - id: ID
+      Description: A globally unique identifier.
+    - lastEventAt: DateTime
+      Description: The date and time of the most recent conversation event. Example events: a message being sent, or a proposal being accepted.
+    ... and 3 more fields
+
+============================================================
+QUERY: conversations
+============================================================
+Description:
+  A list of the Partner organization's conversations.
+DEPRECATED
+  Reason: No longer supported (2024-01).
+
+Arguments (10):
+  • after
+    Description: Returns the elements in the list that come after the specified cursor.
+    Type: String
+    Kind: SCALAR
+  • before
+    Description: Returns the elements in the list that come before the specified cursor.
+    Type: String
+    Kind: SCALAR
+  • first
+    Description: Returns the first _n_ elements from the list.
+    Type: Int
+    Kind: SCALAR
+  • last
+    Description: Returns the last _n_ elements from the list.
+    Type: Int
+    Kind: SCALAR
+  • unreadOnly
+    Description: Only include conversations that have unread messages.
+    Type: Boolean
+    Kind: SCALAR
+    Default: false
+  • statuses
+    Description: Returns conversations with the specified statuses.
+    Type: [ConversationStatus]
+  • createdAtMin
+    Description: Returns conversations that were created on or after the specified date and time.
+    Type: DateTime
+    Kind: SCALAR
+  • createdAtMax
+    Description: Returns conversations that were created on or before the specified date and time.
+    Type: DateTime
+    Kind: SCALAR
+  • lastEventAtMin
+    Description: Returns conversations where the last event occurred on or after the specified date and time.
+    Type: DateTime
+    Kind: SCALAR
+  • lastEventAtMax
+    Description: Returns conversations where the last event occurred on or before the specified date and time.
+    Type: DateTime
+    Kind: SCALAR
+
+Return Type:
+  Type: ConversationConnection!
+  Kind: OBJECT
+  Description: The connection type for Conversation.
+  Pattern: GraphQL Connection (supports pagination)
+  Fields:
+    - edges: [ConversationEdge]
+      Description: A list of edges.
+    - pageInfo: PageInfo
+      Description: Information about pagination in a connection.
+
+============================================================
+QUERY: eventsinks
+============================================================
+Description:
+  A list of Eventsinks configured for the specified App ID.
+
+Arguments (2):
+  • appId
+    Description: The app ID. Example value: `gid://partners/App/1234`.
+    Type: ID!
+    Kind: SCALAR
+    Required: Yes
+  • topic
+    Description: The topic of the Eventsink to query.
+    Type: EventsinkTopic!
+    Kind: ENUM
+    Enum Values: CUSTOMER_EVENTS_CREATE, CUSTOMERS_REDACT, DELIVERY_PROMISES_CREATE
+    Required: Yes
+
+Return Type:
+  Type: [Eventsink]!
+  Description: A sink for submitting customer events.
+
+============================================================
+QUERY: job
+============================================================
+Description:
+  An [Experts Marketplace job](https://help.shopify.com/partners/selling-services).
+DEPRECATED
+  Reason: No longer supported (2024-01).
+
+Arguments (1):
+  • id
+    Description: The job ID. Example value: `gid://partners/Job/1234`.
+    Type: ID!
+    Kind: SCALAR
+    Required: Yes
+
+Return Type:
+  Type: Job
+  Kind: OBJECT
+  Description: An [Experts Marketplace job](https://help.shopify.com/partners/selling-services).
+  Fields:
+    - confirmedCompleted: Boolean
+      Description: Whether the merchant has marked the job as complete.
+    - conversation: Conversation
+      Description: The conversation containing messages exchanged with the merchant.
+    - createdAt: DateTime
+      Description: The date and time the job was submitted to your organization.
+    - dashboardUrl: Url
+      Description: A URL to access this job in the Partner Dashboard.
+    - id: ID
+      Description: A globally unique identifier.
+    ... and 5 more fields
+
+============================================================
+QUERY: jobs
+============================================================
+Description:
+  A list of the Partner organization's [Experts Marketplace jobs](https://help.shopify.com/partners/selling-services).
+DEPRECATED
+  Reason: No longer supported (2024-01).
+
+Arguments (10):
+  • after
+    Description: Returns the elements in the list that come after the specified cursor.
+    Type: String
+    Kind: SCALAR
+  • before
+    Description: Returns the elements in the list that come before the specified cursor.
+    Type: String
+    Kind: SCALAR
+  • first
+    Description: Returns the first _n_ elements from the list.
+    Type: Int
+    Kind: SCALAR
+  • last
+    Description: Returns the last _n_ elements from the list.
+    Type: Int
+    Kind: SCALAR
+  • statuses
+    Description: Returns jobs with the specified statuses.
+    Type: [JobStatus]
+  • shopId
+    Description: Returns jobs associated with the specified shop ID.
+    Type: ID
+    Kind: SCALAR
+  • createdAtMin
+    Description: Returns jobs that were created on or after the specified date and time.
+    Type: DateTime
+    Kind: SCALAR
+  • createdAtMax
+    Description: Returns jobs that were created on or before the specified date and time.
+    Type: DateTime
+    Kind: SCALAR
+  • lastEventAtMin
+    Description: Returns jobs where the last event occurred on or after the specified date and time.
+    Type: DateTime
+    Kind: SCALAR
+  • lastEventAtMax
+    Description: Returns jobs where the last event occurred on or before the specified date and time.
+    Type: DateTime
+    Kind: SCALAR
+
+Return Type:
+  Type: JobConnection!
+  Kind: OBJECT
+  Description: The connection type for Job.
+  Pattern: GraphQL Connection (supports pagination)
+  Fields:
+    - edges: [JobEdge]
+      Description: A list of edges.
+    - pageInfo: PageInfo
+      Description: Information about pagination in a connection.
+
+============================================================
+QUERY: publicApiVersions
+============================================================
+Description:
+  The list of public Partner API versions, including supported, release candidate and unstable versions.
+
+Arguments: None
+
+Return Type:
+  Type: [ApiVersion]!
+  Description: A version of the API.
+
+============================================================
+QUERY: transaction
+============================================================
+Description:
+  A Shopify Partner transaction.
+
+Arguments (1):
+  • id
+    Description: The transaction ID. Example value: `gid://partners/ThemeSale/1234`.
+    Type: ID!
+    Kind: SCALAR
+    Required: Yes
+
+Return Type:
+  Type: Transaction
+  Kind: INTERFACE
+  Description: A Shopify Partner transaction.
+
+============================================================
+QUERY: transactions
+============================================================
+Description:
+  A list of the Partner organization's [transactions](https://help.shopify.com/partners/getting-started/getting-paid).
+
+Arguments (10):
+  • after
+    Description: Returns the elements in the list that come after the specified cursor.
+    Type: String
+    Kind: SCALAR
+  • before
+    Description: Returns the elements in the list that come before the specified cursor.
+    Type: String
+    Kind: SCALAR
+  • first
+    Description: Returns the first _n_ elements from the list.
+    Type: Int
+    Kind: SCALAR
+  • last
+    Description: Returns the last _n_ elements from the list.
+    Type: Int
+    Kind: SCALAR
+  • shopId
+    Description: Returns transactions associated with the specified shop ID.
+    Type: ID
+    Kind: SCALAR
+  • myshopifyDomain
+    Description: Returns transactions associated with the specified `.myshopify.com` shop domain. Example value: `example.myshopify.com`.
+    Type: String
+    Kind: SCALAR
+  • appId
+    Description: Returns transactions associated with the specified app ID.
+    Type: ID
+    Kind: SCALAR
+  • createdAtMin
+    Description: Returns transactions that were created on or after the specified date and time.
+    Type: DateTime
+    Kind: SCALAR
+  • createdAtMax
+    Description: Returns transactions that were created on or before the specified date and time.
+    Type: DateTime
+    Kind: SCALAR
+  • types
+    Description: Returns transactions of the specified types.
+    Type: [TransactionType]
+
+Return Type:
+  Type: TransactionConnection!
+  Kind: OBJECT
+  Description: The connection type for Transaction.
+  Pattern: GraphQL Connection (supports pagination)
+  Fields:
+    - edges: [TransactionEdge]
+      Description: A list of edges.
+    - pageInfo: PageInfo
+      Description: Information about pagination in a connection.
+
+
+MUTATIONS (3)
+====================
+
+============================================================
+MUTATION: appCreditCreate
+============================================================
+Description:
+  Allows an app to create a credit for a shop that can be used towards future app purchases. This mutation is only available to Partner API clients that have been granted the `View financials` permission.
+
+Arguments (5):
+  • appId
+    Description: The id of the app to associate the credit with. Example value: `gid://partners/App/123`.
+    Type: ID!
+    Kind: SCALAR
+    Required: Yes
+  • shopId
+    Description: The id of the shop to be credited. Example value: `gid://partners/Shop/456`.
+    Type: ID!
+    Kind: SCALAR
+    Required: Yes
+  • amount
+    Description: The amount that can be used towards future app purchases in Shopify.
+    Type: MoneyInput!
+    Kind: INPUT_OBJECT
+    Required: Yes
+  • description
+    Description: The description of the app credit.
+    Type: String!
+    Kind: SCALAR
+    Required: Yes
+  • test
+    Description: Specifies whether the app credit is a test transaction.
+    Type: Boolean
+    Kind: SCALAR
+    Default: false
+
+Return Type:
+  Type: AppCreditCreatePayload
+  Kind: OBJECT
+  Description: The result of an appCreditCreate mutation.
+  Fields:
+    - appCredit: AppCredit
+      Description: The app credit that was created.
+    - userErrors: [UserError]
+      Description: Errors when creating the application credit.
+
+============================================================
+MUTATION: eventsinkCreate
+============================================================
+Description:
+  Creates a new Eventsink.
+
+Arguments (1):
+  • input
+    Description: Details of eventsink to create.
+    Type: EventsinkCreateInput!
+    Kind: INPUT_OBJECT
+    Required: Yes
+
+Return Type:
+  Type: EventsinkCreatePayload
+  Kind: OBJECT
+  Description: The result of an Eventsink creation.
+  Fields:
+    - eventsink: Eventsink
+      Description: Details of created Eventsink.
+    - success: Boolean
+      Description: True if the mutation succeeded.
+    - userErrors: [UserError]
+      Description: Errors on mutating the Eventsink.
+
+============================================================
+MUTATION: eventsinkDelete
+============================================================
+Description:
+  Deletes an Eventsink.
+
+Arguments (3):
+  • id
+    Description: Eventsink to delete.
+    Type: ID!
+    Kind: SCALAR
+    Required: Yes
+  • appId
+    Description: The App that associated with the Eventsink.
+    Type: ID!
+    Kind: SCALAR
+    Required: Yes
+  • topic
+    Description: The topic of the Eventsink.
+    Type: EventsinkTopic!
+    Kind: ENUM
+    Enum Values: CUSTOMER_EVENTS_CREATE, CUSTOMERS_REDACT, DELIVERY_PROMISES_CREATE
+    Required: Yes
+
+Return Type:
+  Type: EventsinkDeletePayload
+  Kind: OBJECT
+  Description: The result of an Eventsink delete.
+  Fields:
+    - id: ID
+      Description: Identifier of deleted Eventsink.
+    - success: Boolean
+      Description: True if the mutation succeeded.
+    - userErrors: [UserError]
+      Description: Errors on mutating the Eventsink.
+
+
+CONNECTION PATTERNS
+==============================
+The following types implement GraphQL connection patterns for pagination:
+  • AppEventConnection
+  • ConversationConnection
+  • JobConnection
+  • MessageConnection
+  • TransactionConnection
+
+
+ENUM TYPES
+====================
+Available enumeration types and their values:
+
+AppEventTypes:
+  Values: RELATIONSHIP_INSTALLED, RELATIONSHIP_UNINSTALLED, RELATIONSHIP_REACTIVATED, RELATIONSHIP_DEACTIVATED, ONE_TIME_CHARGE_ACCEPTED, ONE_TIME_CHARGE_ACTIVATED, ONE_TIME_CHARGE_DECLINED, ONE_TIME_CHARGE_EXPIRED, SUBSCRIPTION_CHARGE_ACCEPTED, SUBSCRIPTION_CHARGE_ACTIVATED, SUBSCRIPTION_CHARGE_CANCELED, SUBSCRIPTION_CHARGE_DECLINED, SUBSCRIPTION_CHARGE_EXPIRED, SUBSCRIPTION_CHARGE_FROZEN, SUBSCRIPTION_CHARGE_UNFROZEN, SUBSCRIPTION_CAPPED_AMOUNT_UPDATED, SUBSCRIPTION_APPROACHING_CAPPED_AMOUNT, CREDIT_APPLIED, CREDIT_FAILED, CREDIT_PENDING, USAGE_CHARGE_APPLIED
+
+AppPricingInterval:
+  Values: EVERY_30_DAYS, ANNUAL
+
+ConversationStatus:
+  Values: ACTIVE, BLOCKED
+
+Currency:
+  Values: CYP, EEK, GHC, MRO, MTL, STD, TMM, VEB, VEF, ZWD, ZWL, ZWN, ZWR, JEP, KID, GGP, IMP, XFU, GBX, AED, AFN, ALL, AMD, ANG, AOA, ARS, AUD, AWG, AZN, BAM, BBD, BDT, BGN, BHD, BIF, BMD, BND, BOB, BRL, BSD, BTN, BWP, BYN, BYR, BZD, CAD, CDF, CHF, CLF, CLP, CNY, COP, CRC, CUC, CUP, CVE, CZK, DJF, DKK, DOP, DZD, EGP, ERN, ETB, EUR, FJD, FKP, GBP, GEL, GHS, GIP, GMD, GNF, GTQ, GYD, HKD, HNL, HRK, HTG, HUF, IDR, ILS, INR, IQD, IRR, ISK, JMD, JOD, JPY, KES, KGS, KHR, KMF, KPW, KRW, KWD, KYD, KZT, LAK, LBP, LKR, LRD, LSL, LTL, LVL, LYD, MAD, MDL, MGA, MKD, MMK, MNT, MOP, MRU, MUR, MVR, MWK, MXN, MYR, MZN, NAD, NGN, NIO, NOK, NPR, NZD, OMR, PAB, PEN, PGK, PHP, PKR, PLN, PYG, QAR, RON, RSD, RUB, RWF, SAR, SBD, SCR, SDG, SEK, SGD, SHP, SKK, SLL, SOS, SRD, SSP, STN, SVC, SYP, SZL, THB, TJS, TMT, TND, TOP, TRY, TTD, TWD, TZS, UAH, UGX, USD, UYU, UZS, VED, VES, VND, VUV, WST, XAF, XAG, XAU, XBA, XBB, XBC, XBD, XCD, XDR, XOF, XPD, XPF, XPT, xts, YER, ZAR, ZMK, ZMW
+
+EventsinkTopic:
+  Values: CUSTOMER_EVENTS_CREATE, CUSTOMERS_REDACT, DELIVERY_PROMISES_CREATE
+
+JobStatus:
+  Values: NEW, OPENED, RESPONDED, AWAITING_RESPONSE, COMPLETED, DECLINED, CLOSED, EXPIRED, INACTIVE
+
+MessageSentVia:
+  Values: DASHBOARD, EMAIL
+
+ReferralCategory:
+  Values: AFFILIATE_STORES, TRANSFERRED_STORES, SHOPIFY_PLUS, POINT_OF_SALE, INTUIT_POINT_OF_SALE, MARKETS_PRO, POS_SHOPIFY_PAYMENTS_PROFIT, SHOPIFY_PLUS_ONE_TIME_REFERRAL
+
+TaxTransactionType:
+  Values: SALE_SHOPIFY_FEE, SALE_FEES, REFERRAL_COMMISSION
+
+TransactionType:
+  Values: SERVICE_SALE, SERVICE_SALE_ADJUSTMENT, THEME_SALE, THEME_SALE_ADJUSTMENT, APP_ONE_TIME_SALE, APP_SUBSCRIPTION_SALE, APP_USAGE_SALE, APP_SALE_CREDIT, APP_SALE_ADJUSTMENT, REFERRAL, REFERRAL_ADJUSTMENT, TAX, LEGACY
+
+__DirectiveLocation:
+  Values: QUERY, MUTATION, SUBSCRIPTION, FIELD, FRAGMENT_DEFINITION, FRAGMENT_SPREAD, INLINE_FRAGMENT, SCHEMA, SCALAR, OBJECT, FIELD_DEFINITION, ARGUMENT_DEFINITION, INTERFACE, UNION, ENUM, ENUM_VALUE, INPUT_OBJECT, INPUT_FIELD_DEFINITION, VARIABLE_DEFINITION
+
+__TypeKind:
+  Values: SCALAR, OBJECT, INTERFACE, UNION, ENUM, INPUT_OBJECT, LIST, NON_NULL

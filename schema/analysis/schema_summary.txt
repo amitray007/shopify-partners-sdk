@@ -1,0 +1,26 @@
+SCHEMA ANALYSIS SUMMARY
+==============================
+Version 2024-10:
+  Total Types: 103
+  Queries: 8
+  Mutations: 1
+
+Version 2025-01:
+  Total Types: 103
+  Queries: 8
+  Mutations: 1
+
+Version 2025-04:
+  Total Types: 103
+  Queries: 8
+  Mutations: 1
+
+Version 2025-07:
+  Total Types: 103
+  Queries: 8
+  Mutations: 1
+
+Version unstable:
+  Total Types: 109
+  Queries: 9
+  Mutations: 3

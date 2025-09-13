@@ -1,0 +1,27 @@
+Schema Evolution Summary
+==============================
+
+2024-10:
+  - Types: 94
+  - Queries: 8
+  - Mutations: 1
+
+2025-01:
+  - Types: 94
+  - Queries: 8
+  - Mutations: 1
+
+2025-04:
+  - Types: 94
+  - Queries: 8
+  - Mutations: 1
+
+2025-07:
+  - Types: 94
+  - Queries: 8
+  - Mutations: 1
+
+unstable:
+  - Types: 100
+  - Queries: 9
+  - Mutations: 3

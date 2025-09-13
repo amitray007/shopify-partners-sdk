@@ -1,0 +1,766 @@
+# Shopify Partners API - Complete GraphQL Documentation
+============================================================
+
+## QUERIES
+====================
+
+### app
+----------------------------------------
+**Description:** A Shopify [app](/concepts/apps).
+
+**Complete Query Example:**
+```graphql
+query AppQuery($id: ID!)
+ {
+  app(id: $id) {
+    apiKey
+    events(
+      after: $after
+      before: $before
+      first: $first
+      last: $last
+      types: [ENUM_VALUE]
+      shopId: $shopId
+      chargeId: $chargeId
+      occurredAtMin: $occurredAtMin
+      occurredAtMax: $occurredAtMax
+    ) {
+      edges {
+        cursor
+        node {
+          # Add specific node fields here
+        }
+      }
+      pageInfo {
+        hasNextPage
+        hasPreviousPage
+      }
+    }
+    id
+    name
+  }
+}
+```
+
+**Variables:**
+- `$id`: ID!
+  - The app ID. Example value: `gid://partners/App/1234`.
+
+**Return Type Structure:**
+Type: App
+Description: A Shopify [app](/concepts/apps).
+
+------------------------------------------------------------
+
+### conversation
+----------------------------------------
+**Description:** A conversation with a merchant through the Experts Marketplace.
+**DEPRECATED:** No longer supported (2024-01).
+
+**Complete Query Example:**
+```graphql
+query ConversationQuery($id: ID!)
+ {
+  conversation(id: $id) {
+    createdAt
+    dashboardUrl
+    hasUnreadMessages
+    id
+    lastEventAt
+    merchantUser {
+      avatarUrl
+      id
+      name
+      timezone
+    }
+    messages(
+      after: $after
+      before: $before
+      first: $first
+      last: $last
+      sentAtMin: $sentAtMin
+      sentAtMax: $sentAtMax
+    ) {
+      edges {
+        cursor
+        node {
+          # Add specific node fields here
+        }
+      }
+      pageInfo {
+        hasNextPage
+        hasPreviousPage
+      }
+    }
+    status {
+    }
+  }
+}
+```
+
+**Variables:**
+- `$id`: ID!
+  - The conversation ID. Example value: `gid://partners/Conversation/1234`.
+
+**Return Type Structure:**
+Type: Conversation
+Description: A conversation with a merchant through the Experts Marketplace.
+
+------------------------------------------------------------
+
+### conversations
+----------------------------------------
+**Description:** A list of the Partner organization's conversations.
+**DEPRECATED:** No longer supported (2024-01).
+
+**Complete Query Example:**
+```graphql
+query ConversationsQuery($after: String, $before: String, $first: Int, $last: Int, $unreadOnly: Boolean, $statuses: [ConversationStatus!], $createdAtMin: DateTime, $createdAtMax: DateTime, $lastEventAtMin: DateTime, $lastEventAtMax: DateTime)
+ {
+  conversations(after: $after, before: $before, first: $first, last: $last, unreadOnly: $unreadOnly, statuses: $statuses, createdAtMin: $createdAtMin, createdAtMax: $createdAtMax, lastEventAtMin: $lastEventAtMin, lastEventAtMax: $lastEventAtMax) {
+    edges {
+      cursor
+      node {
+        createdAt
+        dashboardUrl
+        hasUnreadMessages
+    }
+    pageInfo {
+      hasNextPage
+      hasPreviousPage
+    }
+  }
+}
+```
+
+**Variables:**
+- `$after`: String
+  - Returns the elements in the list that come after the specified cursor.
+- `$before`: String
+  - Returns the elements in the list that come before the specified cursor.
+- `$first`: Int
+  - Returns the first _n_ elements from the list.
+- `$last`: Int
+  - Returns the last _n_ elements from the list.
+- `$unreadOnly`: Boolean
+  - Only include conversations that have unread messages.
+  - Default: false
+- `$statuses`: [ConversationStatus!]
+  - Returns conversations with the specified statuses.
+- `$createdAtMin`: DateTime
+  - Returns conversations that were created on or after the specified date and time.
+- `$createdAtMax`: DateTime
+  - Returns conversations that were created on or before the specified date and time.
+- `$lastEventAtMin`: DateTime
+  - Returns conversations where the last event occurred on or after the specified date and time.
+- `$lastEventAtMax`: DateTime
+  - Returns conversations where the last event occurred on or before the specified date and time.
+
+**Return Type Structure:**
+Type: ConversationConnection!
+Description: The connection type for Conversation.
+
+------------------------------------------------------------
+
+### eventsinks
+----------------------------------------
+**Description:** A list of Eventsinks configured for the specified App ID.
+
+**Complete Query Example:**
+```graphql
+query EventsinksQuery($appId: ID!, $topic: EventsinkTopic!)
+ {
+  eventsinks(appId: $appId, topic: $topic) {
+    appId
+    awsUserArn
+    id
+    queues {
+      address
+      region
+    }
+    topic {
+    }
+  }
+}
+```
+
+**Variables:**
+- `$appId`: ID!
+  - The app ID. Example value: `gid://partners/App/1234`.
+- `$topic`: EventsinkTopic!
+  - The topic of the Eventsink to query.
+
+**Return Type Structure:**
+Type: [Eventsink!]!
+Description: A sink for submitting customer events.
+
+------------------------------------------------------------
+
+### job
+----------------------------------------
+**Description:** An [Experts Marketplace job](https://help.shopify.com/partners/selling-services).
+**DEPRECATED:** No longer supported (2024-01).
+
+**Complete Query Example:**
+```graphql
+query JobQuery($id: ID!)
+ {
+  job(id: $id) {
+    confirmedCompleted
+    conversation {
+      createdAt
+      dashboardUrl
+      hasUnreadMessages
+      id
+      lastEventAt
+    }
+    createdAt
+    dashboardUrl
+    id
+    lastEventAt
+    requirements {
+      question
+      responses
+    }
+    services {
+      handle
+      name
+    }
+    shop {
+      avatarUrl
+      id
+      myshopifyDomain
+      name
+    }
+    status {
+    }
+  }
+}
+```
+
+**Variables:**
+- `$id`: ID!
+  - The job ID. Example value: `gid://partners/Job/1234`.
+
+**Return Type Structure:**
+Type: Job
+Description: An [Experts Marketplace job](https://help.shopify.com/partners/selling-services).
+
+------------------------------------------------------------
+
+### jobs
+----------------------------------------
+**Description:** A list of the Partner organization's [Experts Marketplace jobs](https://help.shopify.com/partners/selling-services).
+**DEPRECATED:** No longer supported (2024-01).
+
+**Complete Query Example:**
+```graphql
+query JobsQuery($after: String, $before: String, $first: Int, $last: Int, $statuses: [JobStatus!], $shopId: ID, $createdAtMin: DateTime, $createdAtMax: DateTime, $lastEventAtMin: DateTime, $lastEventAtMax: DateTime)
+ {
+  jobs(after: $after, before: $before, first: $first, last: $last, statuses: $statuses, shopId: $shopId, createdAtMin: $createdAtMin, createdAtMax: $createdAtMax, lastEventAtMin: $lastEventAtMin, lastEventAtMax: $lastEventAtMax) {
+    edges {
+      cursor
+      node {
+        confirmedCompleted
+        conversation
+        createdAt
+    }
+    pageInfo {
+      hasNextPage
+      hasPreviousPage
+    }
+  }
+}
+```
+
+**Variables:**
+- `$after`: String
+  - Returns the elements in the list that come after the specified cursor.
+- `$before`: String
+  - Returns the elements in the list that come before the specified cursor.
+- `$first`: Int
+  - Returns the first _n_ elements from the list.
+- `$last`: Int
+  - Returns the last _n_ elements from the list.
+- `$statuses`: [JobStatus!]
+  - Returns jobs with the specified statuses.
+- `$shopId`: ID
+  - Returns jobs associated with the specified shop ID.
+- `$createdAtMin`: DateTime
+  - Returns jobs that were created on or after the specified date and time.
+- `$createdAtMax`: DateTime
+  - Returns jobs that were created on or before the specified date and time.
+- `$lastEventAtMin`: DateTime
+  - Returns jobs where the last event occurred on or after the specified date and time.
+- `$lastEventAtMax`: DateTime
+  - Returns jobs where the last event occurred on or before the specified date and time.
+
+**Return Type Structure:**
+Type: JobConnection!
+Description: The connection type for Job.
+
+------------------------------------------------------------
+
+### publicApiVersions
+----------------------------------------
+**Description:** The list of public Partner API versions, including supported, release candidate and unstable versions.
+
+**Complete Query Example:**
+```graphql
+query PublicapiversionsQuery
+ {
+  publicApiVersions {
+    displayName
+    handle
+    supported
+  }
+}
+```
+
+**Return Type Structure:**
+Type: [ApiVersion!]!
+Description: A version of the API.
+
+------------------------------------------------------------
+
+### transaction
+----------------------------------------
+**Description:** A Shopify Partner transaction.
+
+**Complete Query Example:**
+```graphql
+query TransactionQuery($id: ID!)
+ {
+  transaction(id: $id) {
+    createdAt
+    id
+    ... on AppOneTimeSale {
+      chargeId
+      createdAt
+      grossAmount
+      id
+      netAmount
+      processingFee
+      regulatoryOperatingFee
+      shopifyFee
+    }
+    ... on AppSaleAdjustment {
+      chargeId
+      createdAt
+      grossAmount
+      id
+      netAmount
+      processingFee
+      regulatoryOperatingFee
+      shopifyFee
+    }
+    ... on AppSaleCredit {
+      chargeId
+      createdAt
+      grossAmount
+      id
+      netAmount
+      processingFee
+      regulatoryOperatingFee
+      shopifyFee
+    }
+    ... on AppSubscriptionSale {
+      chargeId
+      createdAt
+      grossAmount
+      id
+      netAmount
+      processingFee
+      regulatoryOperatingFee
+      shopifyFee
+    }
+    ... on AppUsageSale {
+      chargeId
+      createdAt
+      grossAmount
+      id
+      netAmount
+      processingFee
+      regulatoryOperatingFee
+      shopifyFee
+    }
+    ... on LegacyTransaction {
+      amount
+      createdAt
+      id
+    }
+    ... on ReferralAdjustment {
+      amount
+      createdAt
+      id
+    }
+    ... on ReferralTransaction {
+      amount
+      createdAt
+      id
+    }
+    ... on ServiceSale {
+      createdAt
+      grossAmount
+      id
+      netAmount
+      processingFee
+      regulatoryOperatingFee
+      shopifyFee
+    }
+    ... on ServiceSaleAdjustment {
+      createdAt
+      grossAmount
+      id
+      netAmount
+      processingFee
+      regulatoryOperatingFee
+      shopifyFee
+    }
+    ... on TaxTransaction {
+      amount
+      createdAt
+      id
+    }
+    ... on ThemeSale {
+      createdAt
+      grossAmount
+      id
+      netAmount
+      processingFee
+      regulatoryOperatingFee
+      shopifyFee
+    }
+    ... on ThemeSaleAdjustment {
+      createdAt
+      grossAmount
+      id
+      netAmount
+      processingFee
+      regulatoryOperatingFee
+      shopifyFee
+    }
+  }
+}
+```
+
+**Variables:**
+- `$id`: ID!
+  - The transaction ID. Example value: `gid://partners/ThemeSale/1234`.
+
+**Return Type Structure:**
+Type: Transaction
+Description: A Shopify Partner transaction.
+**Interface Implementations:**
+- AppOneTimeSale
+- AppSaleAdjustment
+- AppSaleCredit
+- AppSubscriptionSale
+- AppUsageSale
+- LegacyTransaction
+- ReferralAdjustment
+- ReferralTransaction
+- ServiceSale
+- ServiceSaleAdjustment
+- TaxTransaction
+- ThemeSale
+- ThemeSaleAdjustment
+
+------------------------------------------------------------
+
+### transactions
+----------------------------------------
+**Description:** A list of the Partner organization's [transactions](https://help.shopify.com/partners/getting-started/getting-paid).
+
+**Complete Query Example:**
+```graphql
+query TransactionsQuery($after: String, $before: String, $first: Int, $last: Int, $shopId: ID, $myshopifyDomain: String, $appId: ID, $createdAtMin: DateTime, $createdAtMax: DateTime, $types: [TransactionType!])
+ {
+  transactions(after: $after, before: $before, first: $first, last: $last, shopId: $shopId, myshopifyDomain: $myshopifyDomain, appId: $appId, createdAtMin: $createdAtMin, createdAtMax: $createdAtMax, types: $types) {
+    edges {
+      cursor
+      node {
+        createdAt
+        id
+        ... on AppOneTimeSale {
+    }
+    pageInfo {
+      hasNextPage
+      hasPreviousPage
+    }
+  }
+}
+```
+
+**Variables:**
+- `$after`: String
+  - Returns the elements in the list that come after the specified cursor.
+- `$before`: String
+  - Returns the elements in the list that come before the specified cursor.
+- `$first`: Int
+  - Returns the first _n_ elements from the list.
+- `$last`: Int
+  - Returns the last _n_ elements from the list.
+- `$shopId`: ID
+  - Returns transactions associated with the specified shop ID.
+- `$myshopifyDomain`: String
+  - Returns transactions associated with the specified `.myshopify.com` shop domain. Example value: `example.myshopify.com`.
+- `$appId`: ID
+  - Returns transactions associated with the specified app ID.
+- `$createdAtMin`: DateTime
+  - Returns transactions that were created on or after the specified date and time.
+- `$createdAtMax`: DateTime
+  - Returns transactions that were created on or before the specified date and time.
+- `$types`: [TransactionType!]
+  - Returns transactions of the specified types.
+
+**Return Type Structure:**
+Type: TransactionConnection!
+Description: The connection type for Transaction.
+
+------------------------------------------------------------
+
+## MUTATIONS
+====================
+
+### appCreditCreate
+----------------------------------------
+**Description:** Allows an app to create a credit for a shop that can be used towards future app purchases. This mutation is only available to Partner API clients that have been granted the `View financials` permission.
+
+**Complete Mutation Example:**
+```graphql
+mutation AppcreditcreateQuery($appId: ID!, $shopId: ID!, $amount: MoneyInput!, $description: String!, $test: Boolean)
+ {
+  appCreditCreate(appId: $appId, shopId: $shopId, amount: $amount, description: $description, test: $test) {
+    appCredit {
+      amount
+      id
+      name
+      test
+    }
+    userErrors {
+      field
+      message
+    }
+  }
+}
+```
+
+------------------------------------------------------------
+
+### eventsinkCreate
+----------------------------------------
+**Description:** Creates a new Eventsink.
+
+**Complete Mutation Example:**
+```graphql
+mutation EventsinkcreateQuery($input: EventsinkCreateInput!)
+ {
+  eventsinkCreate(input: $input) {
+    eventsink {
+      appId
+      awsUserArn
+      id
+      queues {
+        address
+    }
+    success
+    userErrors {
+      field
+      message
+    }
+  }
+}
+```
+
+------------------------------------------------------------
+
+### eventsinkDelete
+----------------------------------------
+**Description:** Deletes an Eventsink.
+
+**Complete Mutation Example:**
+```graphql
+mutation EventsinkdeleteQuery($id: ID!, $appId: ID!, $topic: EventsinkTopic!)
+ {
+  eventsinkDelete(id: $id, appId: $appId, topic: $topic) {
+    id
+    success
+    userErrors {
+      field
+      message
+    }
+  }
+}
+```
+
+------------------------------------------------------------
+
+## INTERFACE IMPLEMENTATIONS
+==============================
+
+### Node
+Implementations:
+- App
+- AppCredit
+- AppOneTimeSale
+- AppPurchaseOneTime
+- AppSaleAdjustment
+- AppSaleCredit
+- AppSubscription
+- AppSubscriptionSale
+- AppUsageRecord
+- AppUsageSale
+- Conversation
+- Job
+- LegacyTransaction
+- MerchantUser
+- Message
+- Organization
+- Organization
+- ReferralAdjustment
+- ReferralTransaction
+- ServiceSale
+- ServiceSaleAdjustment
+- Shop
+- ShopifyEmployee
+- TaxTransaction
+- TeamMember
+- ThemeSale
+- ThemeSaleAdjustment
+
+### AppCharge
+Implementations:
+- AppCredit
+- AppPurchaseOneTime
+- AppSubscription
+- AppUsageRecord
+
+### Transaction
+Implementations:
+- AppOneTimeSale
+- AppSaleAdjustment
+- AppSaleCredit
+- AppSubscriptionSale
+- AppUsageSale
+- LegacyTransaction
+- ReferralAdjustment
+- ReferralTransaction
+- ServiceSale
+- ServiceSaleAdjustment
+- TaxTransaction
+- ThemeSale
+- ThemeSaleAdjustment
+
+### AppCreditEvent
+Implementations:
+- CreditApplied
+- CreditFailed
+- CreditPending
+
+### AppEvent
+Implementations:
+- CreditApplied
+- CreditFailed
+- CreditPending
+- OneTimeChargeAccepted
+- OneTimeChargeActivated
+- OneTimeChargeDeclined
+- OneTimeChargeExpired
+- RelationshipDeactivated
+- RelationshipInstalled
+- RelationshipReactivated
+- RelationshipUninstalled
+- SubscriptionApproachingCappedAmount
+- SubscriptionCappedAmountUpdated
+- SubscriptionChargeAccepted
+- SubscriptionChargeActivated
+- SubscriptionChargeCanceled
+- SubscriptionChargeDeclined
+- SubscriptionChargeExpired
+- SubscriptionChargeFrozen
+- SubscriptionChargeUnfrozen
+- UsageChargeApplied
+
+### Actor
+Implementations:
+- MerchantUser
+- Organization
+- Organization
+- Shop
+- ShopifyEmployee
+- TeamMember
+
+### AppPurchaseOneTimeEvent
+Implementations:
+- OneTimeChargeAccepted
+- OneTimeChargeActivated
+- OneTimeChargeDeclined
+- OneTimeChargeExpired
+
+### AppSubscriptionEvent
+Implementations:
+- SubscriptionApproachingCappedAmount
+- SubscriptionCappedAmountUpdated
+- SubscriptionChargeAccepted
+- SubscriptionChargeActivated
+- SubscriptionChargeCanceled
+- SubscriptionChargeDeclined
+- SubscriptionChargeExpired
+- SubscriptionChargeFrozen
+- SubscriptionChargeUnfrozen
+
+### AppUsageRecordEvent
+Implementations:
+- UsageChargeApplied
+
+## VERSION DIFFERENCES
+=========================
+
+### 2024-10_to_2025-01
+
+### 2024-10_to_2025-04
+
+### 2024-10_to_2025-07
+
+### 2024-10_to_unstable
+Added types:
+- EventsinkCreateInput
+- EventsinkTopic
+- Eventsink
+- EventsinkQueue
+- EventsinkCreatePayload
+- EventsinkDeletePayload
+
+### 2025-01_to_2025-04
+
+### 2025-01_to_2025-07
+
+### 2025-01_to_unstable
+Added types:
+- EventsinkCreateInput
+- EventsinkTopic
+- Eventsink
+- EventsinkQueue
+- EventsinkCreatePayload
+- EventsinkDeletePayload
+
+### 2025-04_to_2025-07
+
+### 2025-04_to_unstable
+Added types:
+- EventsinkCreateInput
+- EventsinkTopic
+- Eventsink
+- EventsinkQueue
+- EventsinkCreatePayload
+- EventsinkDeletePayload
+
+### 2025-07_to_unstable
+Added types:
+- EventsinkCreateInput
+- EventsinkTopic
+- Eventsink
+- EventsinkQueue
+- EventsinkCreatePayload
+- EventsinkDeletePayload

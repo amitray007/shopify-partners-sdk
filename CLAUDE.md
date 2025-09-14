@@ -64,10 +64,11 @@ The SDK implements a **two-tier architecture**:
 The main client class `ShopifyPartnersClient` is defined directly in `__init__.py` for easy importing:
 
 ```python
-from shopify_partners_sdk import ShopifyPartnersClient
+from shopify_partners_sdk import ShopifyPartnersClient, FieldSelector
 
 client = ShopifyPartnersClient(organization_id="...", access_token="...")
-query = client.query("app", id="123").select("id", "title", "shop.name")
+fields = FieldSelector().add_fields("id", "title", "handle")
+result = client.query("app", fields, id="123")
 ```
 
 ### Schema System Architecture (`schema/`)
@@ -104,8 +105,8 @@ The codebase uses Python 3.9+ built-in generics (`dict[str, Any]`, `list[str]`) 
 - **Schema-aware**: All validation based on actual Shopify Partners API GraphQL schema
 
 #### Client Design Philosophy
-- **Method chaining**: Natural, discoverable API (`client.query().select().filter().paginate()`)
-- **Field discovery**: Users can explore available fields (`client.query_fields("app")`)
+- **Two simple approaches**: Raw GraphQL queries and FieldSelector-based dynamic building
+- **Direct execution**: Methods like `client.query()` build and execute in one step
 - **No complex abstractions**: Avoid overengineering, keep the API intuitive
 
 ## Important Development Guidelines
@@ -134,12 +135,12 @@ To add new query capabilities:
 - **`version.py`**: Simple version string
 - **`py.typed`**: Indicates this is a typed package
 
-### Legacy Components (For Backward Compatibility)
-- **`client/field_based_client.py`**: Legacy field-based client (kept for compatibility)
-- **`queries/custom_builders.py`**: Legacy custom query builders
-- **`mutations/custom_builders.py`**: Legacy mutation builders
+### Core Components
+- **`client/field_based_client.py`**: Internal field-based client (used by main client)
+- **`queries/custom_builders.py`**: Custom query builders for FieldSelector system
+- **`mutations/custom_builders.py`**: Custom mutation builders for FieldSelector system
 
-These can be removed in future major versions as they're superseded by the schema-driven approach.
+These components power the FieldSelector approach and are used internally by the main client.
 
 ### Examples and Documentation
 - **`examples/`**: Real-world usage examples (revenue analytics, app lifecycle tracking, etc.)

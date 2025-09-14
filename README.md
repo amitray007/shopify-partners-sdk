@@ -5,18 +5,25 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
-A simple and powerful Python SDK for the Shopify Partners API with two clean approaches to GraphQL queries.
+**Modern Python SDK for Shopify Partners API** - Comprehensive GraphQL client with type safety, automatic pagination, and dual query approaches (raw GraphQL + dynamic FieldSelector). Built for developers who want powerful functionality without complex abstractions.
 
-## 🚀 Features
+## 🚀 Key Features
 
-- **Two Simple Approaches** - Raw GraphQL queries or dynamic FieldSelector building
+### 🎯 **Dual Query Approaches**
+- **Raw GraphQL** - Execute queries directly with full control
+- **Dynamic FieldSelector** - Build queries programmatically with type safety
+
+### 🛡️ **Production-Ready**
 - **Type Safety** - Full type hints throughout the codebase
-- **Automatic Pagination** - Built-in cursor-based pagination support with FieldSelector
-- **Rate Limiting** - Intelligent rate limiting with exponential backoff
-- **Comprehensive Error Handling** - Detailed error messages for GraphQL and HTTP errors
-- **Synchronous API** - Simple, synchronous Python interface
-- **No Complex Abstractions** - Direct access to GraphQL with minimal overhead
-- **Extensible** - Easy to extend with custom field selections
+- **Automatic Pagination** - Built-in cursor-based pagination support
+- **Intelligent Rate Limiting** - Exponential backoff with retry logic
+- **Comprehensive Error Handling** - Detailed GraphQL and HTTP error messages
+
+### 🚀 **Developer Experience**
+- **Zero Complex Abstractions** - Direct GraphQL access with minimal overhead
+- **Synchronous API** - Simple, intuitive Python interface
+- **Extensible Architecture** - Easy to extend with custom field selections
+- **Rich Documentation** - Comprehensive examples and API reference
 
 ## 📦 Installation
 
@@ -36,7 +43,7 @@ poetry add shopify-partners-sdk
 
 ```bash
 # Clone the repository
-git clone https://github.com/your-org/shopify-partners-sdk.git
+git clone https://github.com/amitray007/shopify-partners-sdk.git
 cd shopify-partners-sdk
 
 # Install with Poetry
@@ -46,24 +53,40 @@ poetry install
 pip install -e .
 ```
 
-## 🔧 Quick Setup
+## ⚡ Quick Start
 
 ### 1. Get Your Credentials
 
-You'll need:
-- **Organization ID**: Your Shopify Partners organization ID
-- **Access Token**: A Partners API access token (starts with `prtapi_`)
+Get your credentials from the [Shopify Partners Dashboard](https://partners.shopify.com/):
+1. **Settings** → **API credentials**
+2. Create or select an API credential
+3. Copy your **Organization ID** and **Access Token** (starts with `prtapi_`)
 
-You can find these in your [Shopify Partners Dashboard](https://partners.shopify.com/):
-1. Go to Settings → API credentials
-2. Create a new API credential or use an existing one
-3. Note your Organization ID and Access Token
-
-### 2. Basic Usage
+### 2. Choose Your Approach
 
 The SDK provides two ways to interact with the Shopify Partners API:
 
-#### Option 1: Raw GraphQL Queries
+#### 🎯 Option 1: FieldSelector (Recommended)
+
+```python
+from shopify_partners_sdk import ShopifyPartnersClient, FieldSelector
+
+# Initialize the client
+client = ShopifyPartnersClient(
+    organization_id="your-org-id",
+    access_token="prtapi_your-access-token",
+    api_version="2025-04"
+)
+
+# Build and execute query with FieldSelector
+fields = FieldSelector().add_fields('id', 'title', 'handle')
+result = client.query('app', fields, id='your-app-id')
+print(f"App: {result['app']['title']}")
+
+client.close()
+```
+
+#### 🔧 Option 2: Raw GraphQL
 
 ```python
 from shopify_partners_sdk import ShopifyPartnersClient
@@ -85,28 +108,8 @@ query GetApp($id: ID!) {
   }
 }
 """
-result = client.execute_query(query, {"id": "your-app-id"})
-print(f"App: {result['app']['title']}")
-
-client.close()
-```
-
-#### Option 2: FieldSelector (Dynamic Query Building)
-
-```python
-from shopify_partners_sdk import ShopifyPartnersClient, FieldSelector
-
-# Initialize the client
-client = ShopifyPartnersClient(
-    organization_id="your-org-id",
-    access_token="prtapi_your-access-token",
-    api_version="2025-04"
-)
-
-# Build query dynamically with FieldSelector
-fields = FieldSelector().add_fields('id', 'title', 'handle')
-query_builder = client.field_based.query('app', fields, id='your-app-id')
-result = client.field_based.execute_query_builder(query_builder)
+response = client.execute_raw(query, {"id": "your-app-id"})
+result = response["data"]
 print(f"App: {result['app']['title']}")
 
 client.close()
@@ -131,6 +134,42 @@ client = ShopifyPartnersClient()
 
 ## 📚 Usage Examples
 
+### FieldSelector Approach (Recommended)
+
+```python
+from shopify_partners_sdk import FieldSelector, CommonFields
+
+# Simple query
+fields = FieldSelector().add_fields('id', 'title', 'handle', 'apiKey')
+result = client.query('app', fields, id='app-id')
+
+# Query with nested fields
+app_fields = (FieldSelector()
+    .add_fields('id', 'title', 'handle')
+    .add_nested_field('shop', FieldSelector().add_fields('name', 'myshopifyDomain')))
+result = client.query('app', app_fields, id='app-id')
+
+# Paginated connection query
+app_fields = CommonFields.basic_app()  # Predefined common fields
+result = client.connection_query('apps', app_fields, first=25)
+
+# Complex nested query with money fields
+transaction_fields = (FieldSelector()
+    .add_fields('id', 'createdAt', 'type')
+    .add_money_field('netAmount')  # Automatically adds amount and currencyCode
+    .add_nested_field('app', CommonFields.basic_app())
+    .add_nested_field('shop', CommonFields.basic_shop()))
+
+result = client.connection_query('transactions', transaction_fields, first=50)
+
+# Complex query with nested connections
+event_fields = FieldSelector().add_field('type')
+app_fields = (FieldSelector()
+    .add_field('name')
+    .add_connection_field('events', event_fields, first=10))  # Connection with args
+result = client.query('app', app_fields, id='app-id')
+```
+
 ### Raw GraphQL Approach
 
 ```python
@@ -145,8 +184,8 @@ query GetApp($id: ID!) {
   }
 }
 """
-result = client.execute_query(query, {"id": "app-id"})
-app = result["app"]
+response = client.execute_raw(query, {"id": "app-id"})
+app = response["data"]["app"]
 
 # Get API versions
 query = """
@@ -158,8 +197,8 @@ query GetApiVersions {
   }
 }
 """
-result = client.execute_query(query)
-versions = result["publicApiVersions"]
+response = client.execute_raw(query)
+versions = response["data"]["publicApiVersions"]
 
 # Get paginated apps
 query = """
@@ -175,48 +214,41 @@ query GetApps($first: Int!, $after: String) {
     }
     pageInfo {
       hasNextPage
+      hasPreviousPage
     }
   }
 }
 """
-result = client.execute_query(query, {"first": 25})
-apps = result["apps"]
-```
-
-### FieldSelector Approach
-
-```python
-from shopify_partners_sdk import FieldSelector, CommonFields
-
-# Simple query
-fields = FieldSelector().add_fields('id', 'title', 'handle', 'apiKey')
-query = client.field_based.query('app', fields, id='app-id')
-result = client.field_based.execute_query_builder(query)
-
-# Query with nested fields
-app_fields = (FieldSelector()
-    .add_fields('id', 'title', 'handle')
-    .add_nested_field('shop', FieldSelector().add_fields('name', 'myshopifyDomain')))
-query = client.field_based.query('app', app_fields, id='app-id')
-result = client.field_based.execute_query_builder(query)
-
-# Paginated connection query
-app_fields = CommonFields.basic_app()  # Predefined common fields
-query = client.field_based.connection_query('apps', app_fields, first=25)
-result = client.field_based.execute_query_builder(query)
-
-# Complex nested query with money fields
-transaction_fields = (FieldSelector()
-    .add_fields('id', 'createdAt', 'type')
-    .add_money_field('netAmount')  # Automatically adds amount and currencyCode
-    .add_nested_field('app', CommonFields.basic_app())
-    .add_nested_field('shop', CommonFields.basic_shop()))
-
-query = client.field_based.connection_query('transactions', transaction_fields, first=50)
-result = client.field_based.execute_query_builder(query)
+response = client.execute_raw(query, {"first": 25})
+apps = response["data"]["apps"]
 ```
 
 ### Mutations
+
+#### FieldSelector Mutations (Recommended)
+
+```python
+# Create an app credit with FieldSelector
+result_fields = (FieldSelector()
+    .add_nested_field('appCredit', FieldSelector()
+        .add_fields('id', 'description')
+        .add_money_field('amount'))
+    .add_nested_field('userErrors', FieldSelector()
+        .add_fields('field', 'message')))
+
+input_data = {
+    "appId": "your-app-id",
+    "amount": {"amount": "10.00", "currencyCode": "USD"},
+    "description": "Refund for billing issue"
+}
+
+result = client.mutation('appCreditCreate', result_fields, input=input_data)
+
+if result.get("userErrors"):
+    print("Errors:", result["userErrors"])
+else:
+    print("Credit created:", result["appCredit"])
+```
 
 #### Raw GraphQL Mutations
 
@@ -247,28 +279,8 @@ input_data = {
     "description": "Refund for billing issue"
 }
 
-result = client.execute_query(mutation, {"input": input_data})
-```
-
-#### FieldSelector Mutations
-
-```python
-# Create an app credit with FieldSelector
-result_fields = (FieldSelector()
-    .add_nested_field('appCredit', FieldSelector()
-        .add_fields('id', 'description')
-        .add_money_field('amount'))
-    .add_nested_field('userErrors', FieldSelector()
-        .add_fields('field', 'message')))
-
-mutation = client.field_based.mutation('appCreditCreate', result_fields)
-mutation = mutation.with_input_variable(input_data)
-result = client.field_based.execute_mutation_builder(mutation)
-
-if result.get("userErrors"):
-    print("Errors:", result["userErrors"])
-else:
-    print("Credit created:", result["appCredit"])
+response = client.execute_raw(mutation, {"input": input_data})
+result = response["data"]
 ```
 
 ## 🏗️ Advanced Usage
@@ -300,41 +312,34 @@ from shopify_partners_sdk.exceptions import (
 )
 
 try:
+    # FieldSelector approach
+    fields = FieldSelector().add_fields('id', 'title')
+    result = client.query('app', fields, id='invalid-id')
+except AuthenticationError:
+    print("Invalid credentials")
+except RateLimitError as e:
+    print(f"Rate limited. Retry after: {e.retry_after} seconds")
+except GraphQLError as e:
+    print(f"GraphQL error: {e.message}")
+
+try:
     # Raw GraphQL approach
     query = """
     query GetApp($id: ID!) {
       app(id: $id) { id title }
     }
     """
-    result = client.execute_query(query, {"id": "invalid-id"})
+    response = client.execute_raw(query, {"id": "invalid-id"})
+    if response.get("errors"):
+        print("GraphQL errors:", response["errors"])
+    else:
+        result = response["data"]
 except AuthenticationError:
     print("Invalid credentials")
 except RateLimitError as e:
     print(f"Rate limited. Retry after: {e.retry_after} seconds")
-except ValidationError as e:
-    print(f"Query validation failed: {e.message}")
-except GraphQLError as e:
-    print(f"GraphQL error: {e.message}")
 ```
 
-### Schema Validation
-
-```python
-from shopify_partners_sdk.schema import GraphQLSchema, FieldValidator
-
-# Validate types
-print("App type exists:", GraphQLSchema.validate_type("App"))
-print("Currency is enum:", GraphQLSchema.is_enum_type("Currency"))
-
-# Validate fields
-app_validator = FieldValidator("App")
-print("Valid field:", app_validator.validate_field("name"))  # True
-print("Invalid field:", app_validator.validate_field("title"))  # False - will raise ValidationError
-
-# Get available fields
-app_type = GraphQLSchema.get_type("App")
-print("Available fields:", app_type.get_available_fields())
-```
 
 ### Configuration
 
@@ -386,7 +391,7 @@ client = ShopifyPartnersClient.from_settings(settings)
 
 ```bash
 # Clone the repository
-git clone https://github.com/your-org/shopify-partners-sdk.git
+git clone https://github.com/amitray007/shopify-partners-sdk.git
 cd shopify-partners-sdk
 
 # Install Poetry (if not already installed)
@@ -397,48 +402,6 @@ poetry install
 
 # Install pre-commit hooks
 poetry run pre-commit install
-```
-
-### Running Tests
-
-```bash
-# Run all tests
-poetry run pytest
-
-# Run with coverage
-poetry run pytest --cov=shopify_partners_sdk --cov-report=html
-
-# Run specific test types
-poetry run pytest -m unit
-poetry run pytest -m integration
-```
-
-### Code Quality
-
-```bash
-# Format code
-poetry run black src tests
-poetry run isort src tests
-
-# Lint code
-poetry run ruff check src tests
-poetry run mypy src
-
-# Run all quality checks
-poetry run pre-commit run --all-files
-```
-
-### Building Documentation
-
-```bash
-# Install docs dependencies
-poetry install --with docs
-
-# Serve docs locally
-poetry run mkdocs serve
-
-# Build docs
-poetry run mkdocs build
 ```
 
 ## 🤝 Contributing
@@ -470,18 +433,25 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 See [CHANGELOG.md](CHANGELOG.md) for a list of changes and version history.
 
-## ❓ Support
+## 💬 Community & Support
 
-- 📖 [Documentation](https://shopify-partners-sdk.readthedocs.io)
-- 🐛 [Issue Tracker](https://github.com/your-org/shopify-partners-sdk/issues)
-- 💬 [Discussions](https://github.com/your-org/shopify-partners-sdk/discussions)
+- 📖 **[Documentation](https://shopify-partners-sdk.readthedocs.io)** - Comprehensive guides and API reference
+- 🐛 **[Issue Tracker](https://github.com/amitray007/shopify-partners-sdk/issues)** - Bug reports and feature requests
+- 💬 **[Discussions](https://github.com/amitray007/shopify-partners-sdk/discussions)** - Community Q&A and support
+- 🚀 **[Examples](https://github.com/amitray007/shopify-partners-sdk/tree/main/examples)** - Real-world usage examples
 
 ## 🙏 Acknowledgments
 
-- Built with [httpx](https://www.python-httpx.org/) for HTTP client functionality
-- Uses [Pydantic](https://pydantic-docs.helpmanual.io/) for data validation and settings
-- Inspired by the official Shopify GraphQL APIs
+- Built with [Requests](https://requests.readthedocs.io/) for reliable HTTP client functionality
+- Uses [Pydantic](https://docs.pydantic.dev/) for data validation and settings management
+- Inspired by the official Shopify GraphQL APIs and developer feedback
 
 ---
 
-Made with ❤️ for the Shopify developer community
+<div align="center">
+
+**Made with ❤️ for the Shopify developer community**
+
+[⭐ Star this repo](https://github.com/amitray007/shopify-partners-sdk) • [🐛 Report Bug](https://github.com/amitray007/shopify-partners-sdk/issues) • [💡 Request Feature](https://github.com/amitray007/shopify-partners-sdk/issues)
+
+</div>

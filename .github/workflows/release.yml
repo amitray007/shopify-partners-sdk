@@ -193,7 +193,7 @@ jobs:
         uses: softprops/action-gh-release@v1
         with:
           tag_name: v${{ needs.version.outputs.new_version }}
-          name: Release v${{ needs.version.outputs.new_version }}
+          name: v${{ needs.version.outputs.new_version }}
           body: |
             ## Changes in v${{ needs.version.outputs.new_version }}
 

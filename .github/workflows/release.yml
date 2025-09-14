@@ -15,6 +15,11 @@ on:
           - patch
           - minor
           - major
+      skip_version:
+        description: 'Skip version bump'
+        required: false
+        default: false
+        type: boolean
       skip_publish:
         description: 'Skip publishing to PyPI'
         required: false
@@ -23,7 +28,6 @@ on:
 
 permissions:
   contents: write
-  id-token: write
 
 jobs:
   check-skip:
@@ -45,9 +49,9 @@ jobs:
             echo "skip=false" >> $GITHUB_OUTPUT
           fi
 
-  version-and-publish:
+  version:
     needs: [check-skip]
-    if: needs.check-skip.outputs.skip == 'false' && github.event.inputs.skip_publish != 'true'
+    if: needs.check-skip.outputs.skip == 'false' && github.event.inputs.skip_version != 'true'
     runs-on: ubuntu-latest
     outputs:
       new_version: ${{ steps.version.outputs.new_version }}
@@ -131,17 +135,38 @@ jobs:
           git tag v${{ steps.version.outputs.new_version }}
           git push origin v${{ steps.version.outputs.new_version }}
 
+  pypi-publish:
+    name: upload release to PyPI
+    needs: [check-skip, version]
+    if: needs.check-skip.outputs.skip == 'false' && needs.version.outputs.version_changed == 'true' && github.event.inputs.skip_publish != 'true'
+    runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+      # IMPORTANT: this permission is mandatory for Trusted Publishing
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install Poetry
+        uses: snok/install-poetry@v1
+
       - name: Build package
-        if: steps.version.outputs.version_changed == 'true'
         run: poetry build
 
-      - name: Publish to PyPI
-        if: steps.version.outputs.version_changed == 'true'
+      - name: Publish package distributions to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
 
   create-release:
-    needs: version-and-publish
-    if: needs.version-and-publish.outputs.version_changed == 'true'
+    needs: [version, pypi-publish]
+    if: needs.version.outputs.version_changed == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -167,17 +192,17 @@ jobs:
       - name: Create Release
         uses: softprops/action-gh-release@v1
         with:
-          tag_name: v${{ needs.version-and-publish.outputs.new_version }}
-          name: Release v${{ needs.version-and-publish.outputs.new_version }}
+          tag_name: v${{ needs.version.outputs.new_version }}
+          name: Release v${{ needs.version.outputs.new_version }}
           body: |
-            ## Changes in v${{ needs.version-and-publish.outputs.new_version }}
+            ## Changes in v${{ needs.version.outputs.new_version }}
 
             ${{ steps.changelog.outputs.changelog }}
 
             ## Installation
 
             ```bash
-            pip install shopify-partners-sdk==${{ needs.version-and-publish.outputs.new_version }}
+            pip install shopify-partners-sdk==${{ needs.version.outputs.new_version }}
             ```
           draft: false
-          prerelease: ${{ contains(needs.version-and-publish.outputs.new_version, 'rc') || contains(needs.version-and-publish.outputs.new_version, 'alpha') || contains(needs.version-and-publish.outputs.new_version, 'beta') }}
+          prerelease: ${{ contains(needs.version.outputs.new_version, 'rc') || contains(needs.version.outputs.new_version, 'alpha') || contains(needs.version.outputs.new_version, 'beta') }}

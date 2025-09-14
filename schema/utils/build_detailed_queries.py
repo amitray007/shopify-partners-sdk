@@ -219,8 +219,6 @@ class DetailedQueryBuilder:
         lines.append(f"{indent}  pageInfo {{")
         lines.append(f"{indent}    hasNextPage")
         lines.append(f"{indent}    hasPreviousPage")
-        lines.append(f"{indent}    startCursor")
-        lines.append(f"{indent}    endCursor")
         lines.append(f"{indent}  }}")
         lines.append(f"{indent}}}")
 

@@ -394,8 +394,6 @@ query AppQuery($id: ID!) {
       pageInfo {
         hasNextPage
         hasPreviousPage
-        startCursor
-        endCursor
       }
     }
     id
@@ -453,8 +451,6 @@ query ConversationQuery($id: ID!) {
       pageInfo {
         hasNextPage
         hasPreviousPage
-        startCursor
-        endCursor
       }
     }
   }
@@ -503,8 +499,6 @@ query ConversationsQuery($after: String, $before: String, $first: Int, $last: In
   pageInfo {
     hasNextPage
     hasPreviousPage
-    startCursor
-    endCursor
   }
 }
   }
@@ -659,8 +653,6 @@ query JobsQuery($after: String, $before: String, $first: Int, $last: Int, $statu
   pageInfo {
     hasNextPage
     hasPreviousPage
-    startCursor
-    endCursor
   }
 }
   }
@@ -1166,8 +1158,6 @@ query TransactionsQuery($after: String, $before: String, $first: Int, $last: Int
   pageInfo {
     hasNextPage
     hasPreviousPage
-    startCursor
-    endCursor
   }
 }
   }

@@ -1,0 +1,8 @@
+# Production dependencies for shopify-partners-sdk
+# Generated from pyproject.toml
+
+# Core dependencies
+requests>=2.31.0,<3.0.0
+pydantic>=2.8.0,<3.0.0
+pydantic-settings>=2.4.0,<3.0.0
+typing-extensions>=4.8.0,<5.0.0

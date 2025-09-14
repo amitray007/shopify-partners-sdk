@@ -124,7 +124,6 @@ All queries start from the QueryRoot object. The schema's entry-point for querie
       }
       pageInfo {
         hasNextPage
-        endCursor
       }
     }
   }
@@ -198,7 +197,6 @@ All queries start from the QueryRoot object. The schema's entry-point for querie
     }
     pageInfo {
       hasNextPage
-      endCursor
     }
   }
 }
@@ -438,8 +436,6 @@ Schema analysis confirms all 8 core queries are active and supported in all stab
 **Fields**:
 - `hasNextPage: Boolean!` - Whether more results exist
 - `hasPreviousPage: Boolean!` - Whether previous results exist
-- `startCursor: String` - Cursor for first element
-- `endCursor: String` - Cursor for last element
 
 ## Union Types
 
@@ -491,7 +487,6 @@ Schema analysis confirms all 8 core queries are active and supported in all stab
       }
       pageInfo {
         hasNextPage
-        endCursor
       }
     }
   }
@@ -525,7 +520,6 @@ Schema analysis confirms all 8 core queries are active and supported in all stab
     }
     pageInfo {
       hasNextPage
-      endCursor
     }
   }
 }
@@ -556,7 +550,6 @@ Schema analysis confirms all 8 core queries are active and supported in all stab
       }
       pageInfo {
         hasNextPage
-        endCursor
       }
     }
   }
@@ -680,7 +673,7 @@ Schema analysis confirms all 8 core queries are active and supported in all stab
 - **HTTP Client**: `httpx` for async/await support
 - **Type System**: `pydantic` for data validation and serialization
 - **Date Handling**: `datetime` with timezone support
-- **Logging**: `structlog` for structured logging
+- **Logging**: `logging` for structured logging
 - **Configuration**: `pydantic-settings` for environment-based config
 - **Testing**: `pytest` with `pytest-asyncio` for async testing
 
@@ -692,7 +685,7 @@ from shopify_partners_sdk.models import App, Transaction, AppEventTypes
 # Initialize client
 client = ShopifyPartnersClient(
     organization_id="1234567",
-    access_token="shpat_...",
+    access_token="prtapi_...",
     api_version="2025-04"
 )
 

@@ -226,8 +226,6 @@ query AppQuery(
       pageInfo {
         hasNextPage
         hasPreviousPage
-        startCursor
-        endCursor
       }
     }
   }
@@ -654,8 +652,6 @@ query TransactionsQuery(
     pageInfo {
       hasNextPage
       hasPreviousPage
-      startCursor
-      endCursor
     }
   }
 }
@@ -752,8 +748,6 @@ query ConversationQuery($id: ID!) {
       pageInfo {
         hasNextPage
         hasPreviousPage
-        startCursor
-        endCursor
       }
     }
   }
@@ -808,8 +802,6 @@ query ConversationsQuery(
     pageInfo {
       hasNextPage
       hasPreviousPage
-      startCursor
-      endCursor
     }
   }
 }
@@ -1066,7 +1058,7 @@ All connection queries support standard GraphQL pagination:
 {
   field(first: 20, after: "cursor") {
     edges { cursor node { ... } }
-    pageInfo { hasNextPage endCursor }
+    pageInfo { hasNextPage }
   }
 }
 ```
@@ -1076,7 +1068,7 @@ All connection queries support standard GraphQL pagination:
 {
   field(last: 20, before: "cursor") {
     edges { cursor node { ... } }
-    pageInfo { hasPreviousPage startCursor }
+    pageInfo { hasPreviousPage }
   }
 }
 ```

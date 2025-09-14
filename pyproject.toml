@@ -9,8 +9,8 @@ description = "Python SDK for Shopify Partners API - Comprehensive GraphQL clien
 authors = ["Your Name <your.email@example.com>"]
 readme = "README.md"
 license = "MIT"
-homepage = "https://github.com/your-org/shopify-partners-sdk"
-repository = "https://github.com/your-org/shopify-partners-sdk"
+homepage = "https://github.com/amitray007/shopify-partners-sdk"
+repository = "https://github.com/amitray007/shopify-partners-sdk"
 documentation = "https://shopify-partners-sdk.readthedocs.io"
 keywords = ["shopify", "partners", "graphql", "sdk", "api"]
 classifiers = [
@@ -49,8 +49,7 @@ safety = "^3.2.0"
 
 
 [tool.poetry.urls]
-"Bug Tracker" = "https://github.com/your-org/shopify-partners-sdk/issues"
-"Changelog" = "https://github.com/your-org/shopify-partners-sdk/blob/main/CHANGELOG.md"
+"Bug Tracker" = "https://github.com/amitray007/shopify-partners-sdk/issues"
 
 [tool.ruff]
 target-version = "py39"

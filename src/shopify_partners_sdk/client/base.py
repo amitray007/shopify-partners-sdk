@@ -61,8 +61,8 @@ class BaseGraphQLClient:
                 pool_connections=self._settings.max_connections,
                 pool_maxsize=self._settings.max_keepalive_connections,
             )
-            self._http_client.mount('http://', adapter)
-            self._http_client.mount('https://', adapter)
+            self._http_client.mount("http://", adapter)
+            self._http_client.mount("https://", adapter)
             self._owns_http_client = True
 
         self._request_count = 0

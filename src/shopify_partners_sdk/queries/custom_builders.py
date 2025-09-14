@@ -161,9 +161,9 @@ query{operation_name}{variable_defs} {{
         elif isinstance(value, TransactionType):
             return "TransactionType"
         # Handle pagination and date range inputs as generic objects
-        elif hasattr(value, 'first') or hasattr(value, 'last'):
+        elif hasattr(value, "first") or hasattr(value, "last"):
             return "PaginationInput"
-        elif hasattr(value, 'min_date') or hasattr(value, 'max_date'):
+        elif hasattr(value, "min_date") or hasattr(value, "max_date"):
             return "DateRangeInput"
         else:
             return "String"
@@ -380,5 +380,3 @@ class CustomFilterableQueryBuilder(CustomQueryBuilder):
             Self for method chaining
         """
         return self.add_variable("appId", app_id)
-
-

@@ -159,5 +159,3 @@ mutation{operation_name}{variable_defs} {{
     def get_result_type(self) -> type:
         """Get the expected result type (returns dict for dynamic mutations)."""
         return dict
-
-

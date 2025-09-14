@@ -13,7 +13,9 @@ class Shop(Actor):
     """
 
     myshopify_domain: URL = Field(
-        ..., description="The shop's .myshopify.com domain name", alias="myshopifyDomain"
+        ...,
+        description="The shop's .myshopify.com domain name",
+        alias="myshopifyDomain",
     )
 
     @validator("myshopify_domain")

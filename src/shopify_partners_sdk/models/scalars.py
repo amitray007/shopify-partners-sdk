@@ -8,9 +8,10 @@ from decimal import Decimal
 from typing import Any
 from urllib.parse import urlparse
 
-from pydantic import BaseModel, Field, validator
-from .enums import Currency
+from pydantic import BaseModel, Field
 from pydantic_core import core_schema
+
+from .enums import Currency
 
 
 class DateTime(datetime):

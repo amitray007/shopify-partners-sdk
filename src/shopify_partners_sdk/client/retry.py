@@ -135,9 +135,7 @@ class RetryHandler:
                 return True
 
         # Don't retry on other types of errors (auth, validation, etc.)
-        return isinstance(
-            exception, (requests.ConnectionError, requests.Timeout)
-        )
+        return isinstance(exception, (requests.ConnectionError, requests.Timeout))
 
     def get_retry_delay(self, exception: Exception, attempt: int) -> float:
         """Get the delay before retrying.

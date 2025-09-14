@@ -75,10 +75,7 @@ class ShopifyPartnersClient:
         )
 
     def query(
-        self, 
-        query_name: str, 
-        fields: FieldSelector, 
-        **variables
+        self, query_name: str, fields: FieldSelector, **variables
     ) -> dict[str, Any]:
         """Build and execute a query using FieldSelector.
 
@@ -94,7 +91,7 @@ class ShopifyPartnersClient:
             >>> # Simple query
             >>> fields = FieldSelector().add_fields('id', 'title', 'handle')
             >>> result = client.query('app', fields, id='123')
-            >>> 
+            >>>
             >>> # Connection query with pagination
             >>> event_fields = FieldSelector().add_field('type')
             >>> app_fields = (FieldSelector()
@@ -106,10 +103,7 @@ class ShopifyPartnersClient:
         return self._field_based.execute_query_builder(query_builder)
 
     def connection_query(
-        self, 
-        query_name: str, 
-        node_fields: FieldSelector, 
-        **variables
+        self, query_name: str, node_fields: FieldSelector, **variables
     ) -> dict[str, Any]:
         """Build and execute a connection query using FieldSelector.
 
@@ -126,14 +120,13 @@ class ShopifyPartnersClient:
             >>> app_fields = FieldSelector().add_fields('id', 'title', 'handle')
             >>> result = client.connection_query('apps', app_fields, first=25)
         """
-        query_builder = self._field_based.connection_query(query_name, node_fields, **variables)
+        query_builder = self._field_based.connection_query(
+            query_name, node_fields, **variables
+        )
         return self._field_based.execute_query_builder(query_builder)
 
     def mutation(
-        self, 
-        mutation_name: str, 
-        result_fields: FieldSelector, 
-        **variables
+        self, mutation_name: str, result_fields: FieldSelector, **variables
     ) -> dict[str, Any]:
         """Build and execute a mutation using FieldSelector.
 
@@ -156,7 +149,9 @@ class ShopifyPartnersClient:
             >>> input_data = {"appId": "123", "amount": {"amount": "10.00", "currencyCode": "USD"}}
             >>> result = client.mutation('appCreditCreate', result_fields, input=input_data)
         """
-        mutation_builder = self._field_based.mutation(mutation_name, result_fields, **variables)
+        mutation_builder = self._field_based.mutation(
+            mutation_name, result_fields, **variables
+        )
         return self._field_based.execute_mutation_builder(mutation_builder)
 
     def execute_raw(
@@ -205,14 +200,14 @@ class ShopifyPartnersClient:
         """
         try:
             # Simple query to test connectivity
-            query = '''
+            query = """
             query HealthCheck {
               publicApiVersions {
                 handle
                 supported
               }
             }
-            '''
+            """
             response = self.execute_raw(query)
             result = response.get("data", {})
 

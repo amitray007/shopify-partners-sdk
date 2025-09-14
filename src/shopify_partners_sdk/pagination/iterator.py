@@ -237,9 +237,7 @@ class PaginatedResult:
 
         return nodes
 
-    def collect_pages(
-        self, max_pages: Optional[int] = None
-    ) -> list[ConnectionType]:
+    def collect_pages(self, max_pages: Optional[int] = None) -> list[ConnectionType]:
         """Collect multiple pages into a list.
 
         Args:

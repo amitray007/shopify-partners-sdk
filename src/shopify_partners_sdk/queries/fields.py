@@ -63,7 +63,7 @@ class FieldSelector:
         node_fields: "FieldSelector",
         include_page_info: bool = True,
         include_edges: bool = True,
-        **connection_args
+        **connection_args,
     ) -> "FieldSelector":
         """Add a GraphQL connection field with edges and pageInfo.
 
@@ -88,9 +88,7 @@ class FieldSelector:
             connection_selector.add_nested_field("nodes", node_fields)
 
         if include_page_info:
-            page_info_selector = FieldSelector(
-                ["hasNextPage", "hasPreviousPage"]
-            )
+            page_info_selector = FieldSelector(["hasNextPage", "hasPreviousPage"])
             connection_selector.add_nested_field("pageInfo", page_info_selector)
 
         # Store connection arguments if provided
@@ -147,13 +145,16 @@ class FieldSelector:
             elif isinstance(field_value, FieldSelector):
                 # Nested field - check if it has connection arguments
                 field_args = ""
-                if hasattr(field_value, '_connection_args') and field_value._connection_args:
+                if (
+                    hasattr(field_value, "_connection_args")
+                    and field_value._connection_args
+                ):
                     args = []
                     for arg_name, arg_value in field_value._connection_args.items():
                         if isinstance(arg_value, str):
                             args.append(f'{arg_name}: "{arg_value}"')
                         else:
-                            args.append(f'{arg_name}: {arg_value}')
+                            args.append(f"{arg_name}: {arg_value}")
                     field_args = f"({', '.join(args)})"
 
                 nested_fields = field_value.build(indent + 1)
@@ -209,9 +210,7 @@ class CommonFields:
     @staticmethod
     def page_info() -> FieldSelector:
         """Standard pagination info."""
-        return FieldSelector(
-            ["hasNextPage", "hasPreviousPage"]
-        )
+        return FieldSelector(["hasNextPage", "hasPreviousPage"])
 
     @staticmethod
     def user_error() -> FieldSelector:

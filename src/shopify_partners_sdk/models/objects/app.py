@@ -282,9 +282,13 @@ class AppSubscription(Node):
 
     amount: "Money" = Field(..., description="The amount of the app charge")
     name: str = Field(..., description="The name of the app charge")
-    test: bool = Field(..., description="Whether the app purchase was a test transaction")
+    test: bool = Field(
+        ..., description="Whether the app purchase was a test transaction"
+    )
     billing_on: Optional[DateTime] = Field(
-        None, description="The date when the merchant will next be billed", alias="billingOn"
+        None,
+        description="The date when the merchant will next be billed",
+        alias="billingOn",
     )
 
     def __str__(self) -> str:
@@ -297,7 +301,9 @@ class AppPurchaseOneTime(Node):
 
     amount: "Money" = Field(..., description="The amount of the app charge")
     name: str = Field(..., description="The name of the app charge")
-    test: bool = Field(..., description="Whether the app purchase was a test transaction")
+    test: bool = Field(
+        ..., description="Whether the app purchase was a test transaction"
+    )
 
     def __str__(self) -> str:
         """String representation showing one-time purchase details."""

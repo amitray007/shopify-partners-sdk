@@ -88,12 +88,12 @@ from .objects import (
     UsageChargeApplied,
 )
 from .scalars import (
+    URL,
     Cursor,
     DateTime,
     GlobalID,
     Money,
     MoneyAmount,
-    URL,
 )
 
 __all__ = [

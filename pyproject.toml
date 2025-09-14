@@ -44,11 +44,9 @@ ruff = "^0.6.0"
 black = "^24.8.0"
 isort = "^5.13.0"
 pre-commit = "^3.8.0"
+bandit = "^1.7.0"
+safety = "^3.2.0"
 
-[tool.poetry.group.docs.dependencies]
-mkdocs = "^1.6.0"
-mkdocs-material = "^9.5.0"
-mkdocstrings = {extras = ["python"], version = "^0.25.0"}
 
 [tool.poetry.urls]
 "Bug Tracker" = "https://github.com/your-org/shopify-partners-sdk/issues"

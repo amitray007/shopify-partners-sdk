@@ -136,9 +136,7 @@ class FieldBasedShopifyPartnersClient:
         builder = CustomMutationBuilder(mutation_name, result_fields)
         return builder.add_variables(**variables)
 
-    def execute_query_builder(
-        self, builder: CustomQueryBuilder
-    ) -> dict[str, Any]:
+    def execute_query_builder(self, builder: CustomQueryBuilder) -> dict[str, Any]:
         """Execute a query builder and return the result.
 
         Args:

@@ -94,9 +94,7 @@ class RateLimiter:
         tokens_needed = 1.0 - self._tokens
         return tokens_needed / self._refill_rate
 
-    def acquire(
-        self, tokens: float = 1.0, timeout: Optional[float] = None
-    ) -> None:
+    def acquire(self, tokens: float = 1.0, timeout: Optional[float] = None) -> None:
         """Acquire tokens from the rate limiter.
 
         Args:

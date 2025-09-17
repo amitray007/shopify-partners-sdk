@@ -150,6 +150,8 @@ query{operation_name}{variable_defs} {{
             # Use ID! for fields named "id" or ending with "Id"
             if variable_name == "id" or variable_name.endswith("Id"):
                 return "ID!"
+            if variable_name == "createdAtMin" or variable_name == "createdAtMax":
+                return "DateTime"
             return "String"
         elif isinstance(value, list):
             if value:

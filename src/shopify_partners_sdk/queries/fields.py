@@ -68,7 +68,16 @@ class FieldSelector:
     def add_interface_field(
         self, field: str, subfields: "FieldSelector"
     ) -> "FieldSelector":
+        """Add a GraphQL interface field with inline fragment syntax."""
         return self.add_nested_field(f"... on {field}", subfields)
+
+    def add_interface_fields(
+        self, field_subfields: dict[str, "FieldSelector"]
+    ) -> "FieldSelector":
+        """Add multiple GraphQL interface fields with inline fragment syntax."""
+        for field, subfields in field_subfields.items():
+            self.add_interface_field(field, subfields)
+        return self
 
     def add_connection_field(
         self,

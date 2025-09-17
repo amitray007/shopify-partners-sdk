@@ -57,6 +57,19 @@ class FieldSelector:
         self._fields[field] = subfields
         return self
 
+    def add_nested_fields(
+        self, field_subfields: dict[str, "FieldSelector"]
+    ) -> "FieldSelector":
+        """Add a nested field with multiple subfields."""
+        for field, subfields in field_subfields.items():
+            self.add_nested_field(field, subfields)
+        return self
+
+    def add_interface_field(
+        self, field: str, subfields: "FieldSelector"
+    ) -> "FieldSelector":
+        return self.add_nested_field(f"... on {field}", subfields)
+
     def add_connection_field(
         self,
         field: str,

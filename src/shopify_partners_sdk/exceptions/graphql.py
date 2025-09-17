@@ -40,19 +40,13 @@ class GraphQLError(ShopifyPartnersSDKError):
 class GraphQLValidationError(GraphQLError):
     """Exception raised for GraphQL query validation errors."""
 
-    pass
-
 
 class GraphQLSyntaxError(GraphQLError):
     """Exception raised for GraphQL query syntax errors."""
 
-    pass
-
 
 class GraphQLExecutionError(GraphQLError):
     """Exception raised for GraphQL query execution errors."""
-
-    pass
 
 
 class GraphQLResponseError(ShopifyPartnersSDKError):

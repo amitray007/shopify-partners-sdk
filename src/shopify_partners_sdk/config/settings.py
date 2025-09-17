@@ -24,7 +24,8 @@ from .defaults import (
 class ShopifyPartnersSDKSettings(BaseModel):
     """Configuration settings for the Shopify Partners SDK.
 
-    Settings can be configured via environment variables with the prefix SHOPIFY_PARTNERS_.
+    Settings can be configured via environment variables with the prefix
+    SHOPIFY_PARTNERS_.
     For example: SHOPIFY_PARTNERS_API_VERSION=2025-04
     """
 

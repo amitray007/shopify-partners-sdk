@@ -146,8 +146,13 @@ class ShopifyPartnersClient:
             ...         .add_money_field('amount'))
             ...     .add_nested_field('userErrors', FieldSelector()
             ...         .add_fields('field', 'message')))
-            >>> input_data = {"appId": "123", "amount": {"amount": "10.00", "currencyCode": "USD"}}
-            >>> result = client.mutation('appCreditCreate', result_fields, input=input_data)
+            >>> input_data = {
+            ...     "appId": "123",
+            ...     "amount": {"amount": "10.00", "currencyCode": "USD"}
+            ... }
+            >>> result = client.mutation(
+            ...     'appCreditCreate', result_fields, input=input_data
+            ... )
         """
         mutation_builder = self._field_based.mutation(
             mutation_name, result_fields, **variables

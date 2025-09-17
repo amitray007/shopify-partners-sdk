@@ -3,13 +3,14 @@
 import logging
 from typing import Any
 
-from ..mutations.custom_builders import CustomMutationBuilder
-from ..queries.custom_builders import (
+from shopify_partners_sdk.mutations.custom_builders import CustomMutationBuilder
+from shopify_partners_sdk.queries.custom_builders import (
     CustomConnectionQueryBuilder,
     CustomFilterableQueryBuilder,
     CustomQueryBuilder,
 )
-from ..queries.fields import FieldSelector
+from shopify_partners_sdk.queries.fields import FieldSelector
+
 from .base import BaseGraphQLClient
 
 logger = logging.getLogger(__name__)
@@ -69,7 +70,9 @@ class FieldBasedShopifyPartnersClient:
         Example:
             >>> # Query apps with custom fields
             >>> app_fields = FieldSelector().add_fields('id', 'title', 'handle')
-            >>> query = client.field_based.connection_query('apps', app_fields, first=25)
+            >>> query = client.field_based.connection_query(
+            ...     'apps', app_fields, first=25
+            ... )
             >>> result = client.execute_query_builder(query)
         """
         # Build connection structure with edges and pageInfo

@@ -1,6 +1,6 @@
 """Organization-related model objects for the Shopify Partners API."""
 
-from ..base import Actor
+from shopify_partners_sdk.models.base import Actor
 
 
 class Organization(Actor):

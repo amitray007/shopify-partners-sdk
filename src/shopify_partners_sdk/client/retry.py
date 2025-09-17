@@ -1,14 +1,14 @@
 """Retry logic and backoff strategies for the Shopify Partners SDK."""
 
+from contextlib import suppress
 import random
 import time
-from contextlib import suppress
 from typing import Any, Callable, Optional, TypeVar
 
 import requests
 
-from ..config import ShopifyPartnersSDKSettings
-from ..exceptions.rate_limit import RateLimitServerError
+from shopify_partners_sdk.config import ShopifyPartnersSDKSettings
+from shopify_partners_sdk.exceptions.rate_limit import RateLimitServerError
 
 T = TypeVar("T")
 
@@ -207,8 +207,7 @@ class RetryHandler:
         # This should never be reached, but just in case
         if last_exception:
             raise last_exception
-        else:
-            raise RuntimeError("Unexpected retry loop exit")
+        raise RuntimeError("Unexpected retry loop exit")
 
     def reset_stats(self) -> None:
         """Reset retry statistics."""

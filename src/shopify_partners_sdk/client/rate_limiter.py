@@ -1,18 +1,19 @@
 """Rate limiter implementation for the Shopify Partners API."""
 
-import time
 from collections import deque
 from threading import Lock
+import time
 from typing import Optional
 
-from ..config import ShopifyPartnersSDKSettings
-from ..exceptions.rate_limit import RateLimitExceededError
+from shopify_partners_sdk.config import ShopifyPartnersSDKSettings
+from shopify_partners_sdk.exceptions.rate_limit import RateLimitExceededError
 
 
 class RateLimiter:
     """Token bucket rate limiter for API requests.
 
-    Implements a token bucket algorithm to enforce rate limiting of 4 requests per second
+    Implements a token bucket algorithm to enforce rate limiting of 4 requests
+    per second
     as required by the Shopify Partners API. This prevents local rate limit violations
     before requests are sent to the server.
     """
@@ -154,7 +155,8 @@ class RateLimiter:
         Args:
             count: Number of tokens to acquire
             timeout: Maximum time to wait for all tokens
-            batch_size: Maximum tokens to acquire in each batch (default: bucket_capacity)
+            batch_size: Maximum tokens to acquire in each batch
+                (default: bucket_capacity)
 
         Raises:
             RateLimitExceededError: If timeout is exceeded

@@ -2,8 +2,8 @@
 
 from pydantic import Field, validator
 
-from ..base import Actor
-from ..scalars import URL
+from shopify_partners_sdk.models.base import Actor
+from shopify_partners_sdk.models.scalars import URL
 
 
 class Shop(Actor):

@@ -4,9 +4,9 @@ from typing import TYPE_CHECKING, Optional, Union
 
 from pydantic import Field
 
-from ..base import Connection, Edge, Node
-from ..enums import AppPricingInterval, TaxType
-from ..scalars import DateTime, GlobalID, Money
+from shopify_partners_sdk.models.base import Connection, Edge, Node
+from shopify_partners_sdk.models.enums import AppPricingInterval, TaxType
+from shopify_partners_sdk.models.scalars import DateTime, GlobalID, Money
 
 
 class Transaction(Node):

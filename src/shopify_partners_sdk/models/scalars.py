@@ -1,10 +1,10 @@
 """Custom scalar types for the Shopify Partners GraphQL API."""
 
 import base64
-import json
 from contextlib import suppress
 from datetime import datetime
 from decimal import Decimal
+import json
 from typing import Any
 from urllib.parse import urlparse
 
@@ -140,8 +140,7 @@ class MoneyAmount(Decimal):
         if isinstance(value, (str, int, float, Decimal)):
             decimal_value = Decimal(str(value))
             return cls(decimal_value)
-        else:
-            raise ValueError(f"MoneyAmount must be numeric, got {type(value)}")
+        raise ValueError(f"MoneyAmount must be numeric, got {type(value)}")
 
     def __str__(self) -> str:
         """Convert to string with proper formatting."""

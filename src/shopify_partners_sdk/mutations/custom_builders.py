@@ -2,7 +2,7 @@
 
 from typing import Any, Optional
 
-from ..queries.fields import FieldSelector
+from shopify_partners_sdk.queries.fields import FieldSelector
 
 
 class CustomMutationBuilder:
@@ -94,30 +94,29 @@ class CustomMutationBuilder:
         """Infer GraphQL type from Python value."""
         if isinstance(value, bool):
             return "Boolean!"
-        elif isinstance(value, int):
+        if isinstance(value, int):
             return "Int!"
-        elif isinstance(value, float):
+        if isinstance(value, float):
             return "Float!"
-        elif isinstance(value, str):
+        if isinstance(value, str):
             # Use ID! for fields named "id" or ending with "Id"
             if variable_name == "id" or variable_name.endswith("Id"):
                 return "ID!"
             if variable_name == "createdAtMin" or variable_name == "createdAtMax":
                 return "DateTime"
             return "String!"
-        elif isinstance(value, list):
+        if isinstance(value, list):
             return "[String!]!"
-        elif isinstance(value, dict):
+        if isinstance(value, dict):
             # For mutation input objects, infer from mutation name
-            # Most Shopify mutations follow the pattern: mutationName -> MutationNameInput!
+            # Most Shopify mutations follow the pattern:
+            # mutationName -> MutationNameInput!
             mutation_name = self._mutation_name
             if mutation_name:
                 # Convert camelCase to PascalCase and add Input suffix
-                input_type = mutation_name[0].upper() + mutation_name[1:] + "Input!"
-                return input_type
+                return mutation_name[0].upper() + mutation_name[1:] + "Input!"
             return "JSON!"
-        else:
-            return "String!"
+        return "String!"
 
     def build_mutation(self) -> str:
         """Build the complete GraphQL mutation string."""
@@ -147,7 +146,7 @@ class CustomMutationBuilder:
         # Build fragments
         fragments = "\n".join(self._fragments) if self._fragments else ""
 
-        mutation = f"""
+        return f"""
 mutation{operation_name}{variable_defs} {{
   {self._mutation_name}{mutation_args} {{
 {field_selection}
@@ -155,8 +154,6 @@ mutation{operation_name}{variable_defs} {{
 }}
 {fragments}
         """.strip()
-
-        return mutation
 
     def get_result_type(self) -> type:
         """Get the expected result type (returns dict for dynamic mutations)."""

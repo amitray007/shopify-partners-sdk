@@ -2,8 +2,8 @@
 
 from typing import Optional
 
-from ..config import ShopifyPartnersSDKSettings
-from ..exceptions.auth import AuthenticationError
+from shopify_partners_sdk.config import ShopifyPartnersSDKSettings
+from shopify_partners_sdk.exceptions.auth import AuthenticationError
 
 
 class AuthenticationHandler:

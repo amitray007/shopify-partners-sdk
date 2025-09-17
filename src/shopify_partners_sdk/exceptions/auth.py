@@ -9,8 +9,6 @@ class AuthenticationError(ShopifyPartnersSDKError):
     This includes missing credentials, invalid tokens, organization ID issues, etc.
     """
 
-    pass
-
 
 class AccessTokenError(AuthenticationError):
     """Exception raised for access token-related errors."""

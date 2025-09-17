@@ -4,7 +4,7 @@ import base64
 import json
 from typing import Any, Optional
 
-from ..models.base import Connection, PageInfo
+from shopify_partners_sdk.models.base import Connection, PageInfo
 
 
 class CursorManager:

@@ -2,7 +2,7 @@
 
 from pydantic import Field
 
-from ..base import ShopifyPartnersBaseModel
+from shopify_partners_sdk.models.base import ShopifyPartnersBaseModel
 
 
 class ApiVersion(ShopifyPartnersBaseModel):

@@ -4,9 +4,9 @@ from typing import TYPE_CHECKING, Optional
 
 from pydantic import Field
 
-from ..base import Connection, Edge, Node
-from ..enums import AppEventType
-from ..scalars import DateTime
+from shopify_partners_sdk.models.base import Connection, Edge, Node
+from shopify_partners_sdk.models.enums import AppEventType
+from shopify_partners_sdk.models.scalars import DateTime
 
 
 class App(Node):
@@ -29,7 +29,8 @@ class App(Node):
 class AppEvent(Node):
     """Base interface for app events.
 
-    All app events implement this interface and include app, shop, and timing information.
+    All app events implement this interface and include app, shop, and timing
+    information.
     """
 
     app: App = Field(..., description="The app associated with this event")
@@ -71,25 +72,17 @@ class CreditPending(AppEvent):
 class RelationshipInstalled(AppEvent):
     """Event for when an app is installed on a shop."""
 
-    pass
-
 
 class RelationshipUninstalled(AppEvent):
     """Event for when an app is uninstalled from a shop."""
-
-    pass
 
 
 class RelationshipReactivated(AppEvent):
     """Event for when an app relationship is reactivated."""
 
-    pass
-
 
 class RelationshipDeactivated(AppEvent):
     """Event for when an app relationship is deactivated."""
-
-    pass
 
 
 class OneTimeChargeAccepted(AppEvent):
@@ -311,5 +304,6 @@ class AppPurchaseOneTime(Node):
 
 
 if TYPE_CHECKING:
-    from ..scalars import Money
+    from shopify_partners_sdk.models.scalars import Money
+
     from .shop import Shop

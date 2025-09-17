@@ -4,10 +4,11 @@ Comprehensive GraphQL Schema Analyzer for Shopify Partners API
 Analyzes all schema versions and extracts complete field structures including interfaces
 """
 
-import json
-import os
-from typing import Dict, List, Any, Set
 from collections import defaultdict
+import json
+from pathlib import Path
+from typing import Any, Optional
+
 
 class GraphQLSchemaAnalyzer:
     def __init__(self):
@@ -25,34 +26,39 @@ class GraphQLSchemaAnalyzer:
             "../versions/2025-01/introspection.json",
             "../versions/2025-04/introspection.json",
             "../versions/2025-07/introspection.json",
-            "../versions/unstable/introspection.json"
+            "../versions/unstable/introspection.json",
         ]
 
         for schema_file in schema_files:
-            if os.path.exists(schema_file):
-                version = schema_file.split('/')[2]
+            if Path(schema_file).exists():
+                version = schema_file.split("/")[2]
                 print(f"Loading schema version: {version}")
-                with open(schema_file, 'r', encoding='utf-8') as f:
+                with Path(schema_file).open(encoding="utf-8") as f:
                     self.schemas[version] = json.load(f)
 
-    def analyze_type(self, type_info: Dict[str, Any]) -> str:
+    def analyze_type(self, type_info: dict[str, Any]) -> str:
         """Recursively analyze GraphQL type structure"""
         if not type_info:
             return "Unknown"
 
-        kind = type_info.get('kind', '')
-        name = type_info.get('name', '')
+        kind = type_info.get("kind", "")
+        name = type_info.get("name", "")
 
-        if kind == 'NON_NULL':
+        if kind == "NON_NULL":
             return f"{self.analyze_type(type_info.get('ofType', {}))}!"
-        elif kind == 'LIST':
+        if kind == "LIST":
             return f"[{self.analyze_type(type_info.get('ofType', {}))}]"
-        elif kind in ['SCALAR', 'OBJECT', 'INTERFACE', 'UNION', 'ENUM', 'INPUT_OBJECT']:
+        if kind in ["SCALAR", "OBJECT", "INTERFACE", "UNION", "ENUM", "INPUT_OBJECT"]:
             return name
-        else:
-            return f"{kind}({name})"
+        return f"{kind}({name})"
 
-    def get_field_structure(self, type_name: str, schema_data: Dict, visited: Set[str] = None, depth: int = 0) -> Dict[str, Any]:
+    def get_field_structure(
+        self,
+        type_name: str,
+        schema_data: dict,
+        visited: Optional[set[str]] = None,
+        depth: int = 0,
+    ) -> dict[str, Any]:
         """Get complete field structure for a type including nested fields"""
         if visited is None:
             visited = set()
@@ -64,8 +70,8 @@ class GraphQLSchemaAnalyzer:
 
         # Find the type definition
         type_def = None
-        for type_info in schema_data['data']['__schema']['types']:
-            if type_info.get('name') == type_name:
+        for type_info in schema_data["data"]["__schema"]["types"]:
+            if type_info.get("name") == type_name:
                 type_def = type_info
                 break
 
@@ -74,91 +80,108 @@ class GraphQLSchemaAnalyzer:
 
         result = {
             "type": type_name,
-            "kind": type_def.get('kind'),
-            "description": type_def.get('description'),
-            "fields": {}
+            "kind": type_def.get("kind"),
+            "description": type_def.get("description"),
+            "fields": {},
         }
 
         # Handle different type kinds
-        if type_def.get('kind') == 'OBJECT' or type_def.get('kind') == 'INTERFACE':
-            fields = type_def.get('fields', [])
+        if type_def.get("kind") == "OBJECT" or type_def.get("kind") == "INTERFACE":
+            fields = type_def.get("fields", [])
             for field in fields:
-                field_name = field.get('name')
-                field_type = self.analyze_type(field.get('type', {}))
-                field_desc = field.get('description', '')
-                field_args = field.get('args', [])
+                field_name = field.get("name")
+                field_type = self.analyze_type(field.get("type", {}))
+                field_desc = field.get("description", "")
+                field_args = field.get("args", [])
 
                 field_info = {
                     "type": field_type,
                     "description": field_desc,
-                    "isDeprecated": field.get('isDeprecated', False),
-                    "deprecationReason": field.get('deprecationReason')
+                    "isDeprecated": field.get("isDeprecated", False),
+                    "deprecationReason": field.get("deprecationReason"),
                 }
 
                 # Add arguments if any
                 if field_args:
                     field_info["arguments"] = {}
                     for arg in field_args:
-                        arg_name = arg.get('name')
-                        arg_type = self.analyze_type(arg.get('type', {}))
-                        arg_desc = arg.get('description', '')
-                        arg_default = arg.get('defaultValue')
+                        arg_name = arg.get("name")
+                        arg_type = self.analyze_type(arg.get("type", {}))
+                        arg_desc = arg.get("description", "")
+                        arg_default = arg.get("defaultValue")
 
                         field_info["arguments"][arg_name] = {
                             "type": arg_type,
                             "description": arg_desc,
-                            "defaultValue": arg_default
+                            "defaultValue": arg_default,
                         }
 
                 # For object types, get nested structure (limited depth)
-                base_type = field_type.replace('!', '').replace('[', '').replace(']', '')
-                if depth < 2 and base_type not in ['String', 'Int', 'Boolean', 'ID', 'Float', 'DateTime', 'Url', 'Money']:
-                    field_info["nestedFields"] = self.get_field_structure(base_type, schema_data, visited.copy(), depth + 1)
+                base_type = (
+                    field_type.replace("!", "").replace("[", "").replace("]", "")
+                )
+                if depth < 2 and base_type not in [
+                    "String",
+                    "Int",
+                    "Boolean",
+                    "ID",
+                    "Float",
+                    "DateTime",
+                    "Url",
+                    "Money",
+                ]:
+                    field_info["nestedFields"] = self.get_field_structure(
+                        base_type, schema_data, visited.copy(), depth + 1
+                    )
 
                 result["fields"][field_name] = field_info
 
-        elif type_def.get('kind') == 'ENUM':
-            enum_values = type_def.get('enumValues', [])
-            result["enumValues"] = [ev.get('name') for ev in enum_values]
+        elif type_def.get("kind") == "ENUM":
+            enum_values = type_def.get("enumValues", [])
+            result["enumValues"] = [ev.get("name") for ev in enum_values]
 
-        elif type_def.get('kind') == 'UNION':
-            possible_types = type_def.get('possibleTypes', [])
-            result["possibleTypes"] = [pt.get('name') for pt in possible_types]
+        elif type_def.get("kind") == "UNION":
+            possible_types = type_def.get("possibleTypes", [])
+            result["possibleTypes"] = [pt.get("name") for pt in possible_types]
 
         # Handle interfaces
-        if type_def.get('kind') == 'INTERFACE':
+        if type_def.get("kind") == "INTERFACE":
             # Find implementations
             implementations = []
-            for type_info in schema_data['data']['__schema']['types']:
-                if type_info.get('kind') == 'OBJECT':
-                    interfaces = type_info.get('interfaces', [])
+            for type_info in schema_data["data"]["__schema"]["types"]:
+                if type_info.get("kind") == "OBJECT":
+                    interfaces = type_info.get("interfaces", [])
                     for interface in interfaces:
-                        if interface.get('name') == type_name:
-                            implementations.append(type_info.get('name'))
+                        if interface.get("name") == type_name:
+                            implementations.append(type_info.get("name"))
             result["implementations"] = implementations
 
         visited.remove(type_name)
         return result
 
-    def analyze_interface_implementations(self, schema_data: Dict) -> Dict[str, List[str]]:
+    def analyze_interface_implementations(
+        self, schema_data: dict
+    ) -> dict[str, list[str]]:
         """Find all interface implementations"""
         implementations = defaultdict(list)
 
-        for type_info in schema_data['data']['__schema']['types']:
-            if type_info.get('kind') == 'OBJECT':
-                interfaces = type_info.get('interfaces', [])
-                type_name = type_info.get('name')
+        for type_info in schema_data["data"]["__schema"]["types"]:
+            if type_info.get("kind") == "OBJECT":
+                interfaces = type_info.get("interfaces", [])
+                type_name = type_info.get("name")
 
                 for interface in interfaces:
-                    interface_name = interface.get('name')
+                    interface_name = interface.get("name")
                     implementations[interface_name].append(type_name)
 
         return dict(implementations)
 
-    def build_complete_query_example(self, query_name: str, query_info: Dict, schema_data: Dict) -> str:
+    def build_complete_query_example(
+        self, query_name: str, query_info: dict, schema_data: dict
+    ) -> str:
         """Build complete GraphQL query example with all fields"""
-        query_type = self.analyze_type(query_info.get('type', {}))
-        args = query_info.get('args', [])
+        query_type = self.analyze_type(query_info.get("type", {}))
+        args = query_info.get("args", [])
 
         # Build query structure
         query_parts = [f"query {query_name.title()}Query"]
@@ -168,8 +191,8 @@ class GraphQLSchemaAnalyzer:
         argument_list = []
 
         for arg in args:
-            arg_name = arg.get('name')
-            arg_type = self.analyze_type(arg.get('type', {}))
+            arg_name = arg.get("name")
+            arg_type = self.analyze_type(arg.get("type", {}))
             variables.append(f"${arg_name}: {arg_type}")
             argument_list.append(f"{arg_name}: ${arg_name}")
 
@@ -185,38 +208,53 @@ class GraphQLSchemaAnalyzer:
             query_parts.append(f"  {query_name} {{")
 
         # Get field structure for return type
-        base_type = query_type.replace('!', '').replace('[', '').replace(']', '')
+        base_type = query_type.replace("!", "").replace("[", "").replace("]", "")
         field_structure = self.get_field_structure(base_type, schema_data)
 
         # Build field selection
         indent = "    "
-        query_parts.extend(self._build_field_selection(field_structure, indent, schema_data))
+        query_parts.extend(
+            self._build_field_selection(field_structure, indent, schema_data)
+        )
 
         query_parts.append("  }")
         query_parts.append("}")
 
         return "\n".join(query_parts)
 
-    def _build_field_selection(self, field_structure: Dict, indent: str, schema_data: Dict) -> List[str]:
+    def _build_field_selection(
+        self, field_structure: dict, indent: str, schema_data: dict
+    ) -> list[str]:
         """Build field selection for GraphQL query"""
         lines = []
-        fields = field_structure.get('fields', {})
+        fields = field_structure.get("fields", {})
 
         # Handle interface types with implementations
-        if field_structure.get('kind') == 'INTERFACE':
-            implementations = field_structure.get('implementations', [])
+        if field_structure.get("kind") == "INTERFACE":
+            implementations = field_structure.get("implementations", [])
 
             # Add common interface fields first
             for field_name, field_info in fields.items():
-                if field_info.get('isDeprecated'):
+                if field_info.get("isDeprecated"):
                     continue
 
-                field_type = field_info.get('type', '')
-                base_type = field_type.replace('!', '').replace('[', '').replace(']', '')
+                field_type = field_info.get("type", "")
+                base_type = (
+                    field_type.replace("!", "").replace("[", "").replace("]", "")
+                )
 
-                if base_type in ['String', 'Int', 'Boolean', 'ID', 'Float', 'DateTime', 'Url', 'Money']:
+                if base_type in [
+                    "String",
+                    "Int",
+                    "Boolean",
+                    "ID",
+                    "Float",
+                    "DateTime",
+                    "Url",
+                    "Money",
+                ]:
                     lines.append(f"{indent}{field_name}")
-                elif 'Connection' in base_type:
+                elif "Connection" in base_type:
                     lines.append(f"{indent}{field_name} {{")
                     lines.append(f"{indent}  edges {{")
                     lines.append(f"{indent}    cursor")
@@ -234,15 +272,26 @@ class GraphQLSchemaAnalyzer:
             for impl in implementations:
                 lines.append(f"{indent}... on {impl} {{")
                 impl_structure = self.get_field_structure(impl, schema_data)
-                impl_fields = impl_structure.get('fields', {})
+                impl_fields = impl_structure.get("fields", {})
 
                 for field_name, field_info in impl_fields.items():
-                    if field_info.get('isDeprecated'):
+                    if field_info.get("isDeprecated"):
                         continue
-                    field_type = field_info.get('type', '')
-                    base_type = field_type.replace('!', '').replace('[', '').replace(']', '')
+                    field_type = field_info.get("type", "")
+                    base_type = (
+                        field_type.replace("!", "").replace("[", "").replace("]", "")
+                    )
 
-                    if base_type in ['String', 'Int', 'Boolean', 'ID', 'Float', 'DateTime', 'Url', 'Money']:
+                    if base_type in [
+                        "String",
+                        "Int",
+                        "Boolean",
+                        "ID",
+                        "Float",
+                        "DateTime",
+                        "Url",
+                        "Money",
+                    ]:
                         lines.append(f"{indent}  {field_name}")
 
                 lines.append(f"{indent}}}")
@@ -250,25 +299,36 @@ class GraphQLSchemaAnalyzer:
         else:
             # Regular object fields
             for field_name, field_info in fields.items():
-                if field_info.get('isDeprecated'):
+                if field_info.get("isDeprecated"):
                     continue
 
-                field_type = field_info.get('type', '')
-                base_type = field_type.replace('!', '').replace('[', '').replace(']', '')
+                field_type = field_info.get("type", "")
+                base_type = (
+                    field_type.replace("!", "").replace("[", "").replace("]", "")
+                )
 
-                if base_type in ['String', 'Int', 'Boolean', 'ID', 'Float', 'DateTime', 'Url', 'Money']:
+                if base_type in [
+                    "String",
+                    "Int",
+                    "Boolean",
+                    "ID",
+                    "Float",
+                    "DateTime",
+                    "Url",
+                    "Money",
+                ]:
                     lines.append(f"{indent}{field_name}")
-                elif 'Connection' in base_type:
+                elif "Connection" in base_type:
                     # Handle connection pattern
                     lines.append(f"{indent}{field_name}(")
 
                     # Add pagination arguments if they exist
-                    args = field_info.get('arguments', {})
+                    args = field_info.get("arguments", {})
                     arg_lines = []
-                    for arg_name, arg_info in args.items():
-                        if arg_name in ['first', 'last', 'after', 'before']:
+                    for arg_name, _arg_info in args.items():
+                        if arg_name in ["first", "last", "after", "before"]:
                             arg_lines.append(f"{indent}  {arg_name}: ${arg_name}")
-                        elif 'types' in arg_name.lower():
+                        elif "types" in arg_name.lower():
                             arg_lines.append(f"{indent}  {arg_name}: [ENUM_VALUE]")
                         else:
                             arg_lines.append(f"{indent}  {arg_name}: ${arg_name}")
@@ -288,9 +348,11 @@ class GraphQLSchemaAnalyzer:
                     lines.append(f"{indent}    hasPreviousPage")
                     lines.append(f"{indent}  }}")
                     lines.append(f"{indent}}}")
-                elif field_info.get('nestedFields'):
+                elif field_info.get("nestedFields"):
                     lines.append(f"{indent}{field_name} {{")
-                    nested_lines = self._build_field_selection(field_info['nestedFields'], indent + "  ", schema_data)
+                    nested_lines = self._build_field_selection(
+                        field_info["nestedFields"], indent + "  ", schema_data
+                    )
                     lines.extend(nested_lines[:5])  # Limit nested depth
                     lines.append(f"{indent}}}")
                 else:
@@ -311,15 +373,23 @@ class GraphQLSchemaAnalyzer:
                 v1, v2 = versions[i], versions[j]
 
                 # Compare types
-                v1_types = {t['name']: t for t in self.schemas[v1]['data']['__schema']['types'] if t.get('name')}
-                v2_types = {t['name']: t for t in self.schemas[v2]['data']['__schema']['types'] if t.get('name')}
+                v1_types = {
+                    t["name"]: t
+                    for t in self.schemas[v1]["data"]["__schema"]["types"]
+                    if t.get("name")
+                }
+                v2_types = {
+                    t["name"]: t
+                    for t in self.schemas[v2]["data"]["__schema"]["types"]
+                    if t.get("name")
+                }
 
                 added = set(v2_types.keys()) - set(v1_types.keys())
                 removed = set(v1_types.keys()) - set(v2_types.keys())
 
                 differences[f"{v1}_to_{v2}"] = {
                     "added_types": list(added),
-                    "removed_types": list(removed)
+                    "removed_types": list(removed),
                 }
 
         self.version_differences = differences
@@ -330,7 +400,7 @@ class GraphQLSchemaAnalyzer:
             return "No schemas loaded"
 
         # Use the most recent schema (unstable)
-        latest_schema = self.schemas.get('unstable') or list(self.schemas.values())[-1]
+        latest_schema = self.schemas.get("unstable") or list(self.schemas.values())[-1]
 
         doc_lines = []
         doc_lines.append("# Shopify Partners API - Complete GraphQL Documentation")
@@ -338,18 +408,18 @@ class GraphQLSchemaAnalyzer:
         doc_lines.append("")
 
         # Get query and mutation root types
-        schema_info = latest_schema['data']['__schema']
-        query_type_name = schema_info['queryType']['name']
-        mutation_type_name = schema_info.get('mutationType', {}).get('name', '')
+        schema_info = latest_schema["data"]["__schema"]
+        query_type_name = schema_info["queryType"]["name"]
+        mutation_type_name = schema_info.get("mutationType", {}).get("name", "")
 
         # Find query and mutation type definitions
         query_type = None
         mutation_type = None
 
-        for type_info in schema_info['types']:
-            if type_info['name'] == query_type_name:
+        for type_info in schema_info["types"]:
+            if type_info["name"] == query_type_name:
                 query_type = type_info
-            elif type_info['name'] == mutation_type_name:
+            elif type_info["name"] == mutation_type_name:
                 mutation_type = type_info
 
         # Document queries
@@ -358,21 +428,25 @@ class GraphQLSchemaAnalyzer:
             doc_lines.append("=" * 20)
             doc_lines.append("")
 
-            for field in query_type.get('fields', []):
-                query_name = field['name']
+            for field in query_type.get("fields", []):
+                query_name = field["name"]
                 doc_lines.append(f"### {query_name}")
                 doc_lines.append("-" * 40)
 
-                if field.get('description'):
+                if field.get("description"):
                     doc_lines.append(f"**Description:** {field['description']}")
 
-                if field.get('isDeprecated'):
-                    doc_lines.append(f"**DEPRECATED:** {field.get('deprecationReason', 'No reason provided')}")
+                if field.get("isDeprecated"):
+                    doc_lines.append(
+                        f"**DEPRECATED:** {field.get('deprecationReason', 'No reason provided')}"
+                    )
 
                 doc_lines.append("")
 
                 # Build complete query example
-                query_example = self.build_complete_query_example(query_name, field, latest_schema)
+                query_example = self.build_complete_query_example(
+                    query_name, field, latest_schema
+                )
                 doc_lines.append("**Complete Query Example:**")
                 doc_lines.append("```graphql")
                 doc_lines.append(query_example)
@@ -380,14 +454,14 @@ class GraphQLSchemaAnalyzer:
                 doc_lines.append("")
 
                 # Document variables
-                args = field.get('args', [])
+                args = field.get("args", [])
                 if args:
                     doc_lines.append("**Variables:**")
                     for arg in args:
-                        arg_name = arg['name']
-                        arg_type = self.analyze_type(arg['type'])
-                        arg_desc = arg.get('description', 'No description')
-                        default_val = arg.get('defaultValue')
+                        arg_name = arg["name"]
+                        arg_type = self.analyze_type(arg["type"])
+                        arg_desc = arg.get("description", "No description")
+                        default_val = arg.get("defaultValue")
 
                         doc_lines.append(f"- `${arg_name}`: {arg_type}")
                         doc_lines.append(f"  - {arg_desc}")
@@ -397,19 +471,23 @@ class GraphQLSchemaAnalyzer:
                     doc_lines.append("")
 
                 # Document return type structure
-                return_type = self.analyze_type(field['type'])
-                base_return_type = return_type.replace('!', '').replace('[', '').replace(']', '')
+                return_type = self.analyze_type(field["type"])
+                base_return_type = (
+                    return_type.replace("!", "").replace("[", "").replace("]", "")
+                )
 
-                field_structure = self.get_field_structure(base_return_type, latest_schema)
+                field_structure = self.get_field_structure(
+                    base_return_type, latest_schema
+                )
                 doc_lines.append("**Return Type Structure:**")
                 doc_lines.append(f"Type: {return_type}")
 
-                if field_structure.get('description'):
+                if field_structure.get("description"):
                     doc_lines.append(f"Description: {field_structure['description']}")
 
                 # Handle interface implementations
-                if field_structure.get('kind') == 'INTERFACE':
-                    implementations = field_structure.get('implementations', [])
+                if field_structure.get("kind") == "INTERFACE":
+                    implementations = field_structure.get("implementations", [])
                     if implementations:
                         doc_lines.append("**Interface Implementations:**")
                         for impl in implementations:
@@ -425,18 +503,20 @@ class GraphQLSchemaAnalyzer:
             doc_lines.append("=" * 20)
             doc_lines.append("")
 
-            for field in mutation_type.get('fields', []):
-                mutation_name = field['name']
+            for field in mutation_type.get("fields", []):
+                mutation_name = field["name"]
                 doc_lines.append(f"### {mutation_name}")
                 doc_lines.append("-" * 40)
 
-                if field.get('description'):
+                if field.get("description"):
                     doc_lines.append(f"**Description:** {field['description']}")
 
                 doc_lines.append("")
 
                 # Build mutation example
-                mutation_example = self.build_complete_query_example(mutation_name, field, latest_schema)
+                mutation_example = self.build_complete_query_example(
+                    mutation_name, field, latest_schema
+                )
                 # Convert to mutation syntax
                 mutation_example = mutation_example.replace("query", "mutation")
 
@@ -472,17 +552,18 @@ class GraphQLSchemaAnalyzer:
 
             for comparison, diff in self.version_differences.items():
                 doc_lines.append(f"### {comparison}")
-                if diff['added_types']:
+                if diff["added_types"]:
                     doc_lines.append("Added types:")
-                    for type_name in diff['added_types']:
+                    for type_name in diff["added_types"]:
                         doc_lines.append(f"- {type_name}")
-                if diff['removed_types']:
+                if diff["removed_types"]:
                     doc_lines.append("Removed types:")
-                    for type_name in diff['removed_types']:
+                    for type_name in diff["removed_types"]:
                         doc_lines.append(f"- {type_name}")
                 doc_lines.append("")
 
         return "\n".join(doc_lines)
+
 
 def main():
     analyzer = GraphQLSchemaAnalyzer()
@@ -498,7 +579,7 @@ def main():
 
     # Write to file
     output_file = "../analysis/complete_field_structures.txt"
-    with open(output_file, 'w', encoding='utf-8') as f:
+    with Path(output_file).open("w", encoding="utf-8") as f:
         f.write(documentation)
 
     print(f"Complete documentation written to {output_file}")
@@ -509,21 +590,21 @@ def main():
     summary_lines.append("=" * 30)
 
     for version, schema in analyzer.schemas.items():
-        schema_info = schema['data']['__schema']
-        types = schema_info['types']
+        schema_info = schema["data"]["__schema"]
+        types = schema_info["types"]
 
-        query_type = schema_info.get('queryType', {}).get('name', 'Unknown')
-        mutation_type = schema_info.get('mutationType', {}).get('name', 'Unknown')
+        query_type = schema_info.get("queryType", {}).get("name", "Unknown")
+        mutation_type = schema_info.get("mutationType", {}).get("name", "Unknown")
 
         # Count queries and mutations
         query_count = 0
         mutation_count = 0
 
         for type_info in types:
-            if type_info['name'] == query_type:
-                query_count = len(type_info.get('fields', []))
-            elif type_info['name'] == mutation_type:
-                mutation_count = len(type_info.get('fields', []))
+            if type_info["name"] == query_type:
+                query_count = len(type_info.get("fields", []))
+            elif type_info["name"] == mutation_type:
+                mutation_count = len(type_info.get("fields", []))
 
         summary_lines.append(f"Version {version}:")
         summary_lines.append(f"  Total Types: {len(types)}")
@@ -532,10 +613,11 @@ def main():
         summary_lines.append("")
 
     summary_file = "../analysis/schema_summary.txt"
-    with open(summary_file, 'w', encoding='utf-8') as f:
+    with Path(summary_file).open("w", encoding="utf-8") as f:
         f.write("\n".join(summary_lines))
 
     print(f"Schema summary written to {summary_file}")
+
 
 if __name__ == "__main__":
     main()

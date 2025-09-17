@@ -2,7 +2,8 @@
 
 from typing import Any, Optional
 
-from ..models.enums import AppEventType, TransactionType
+from shopify_partners_sdk.models.enums import AppEventType, TransactionType
+
 from .fields import FieldSelector
 
 
@@ -113,7 +114,7 @@ class CustomQueryBuilder:
         # Build fragments
         fragments = "\n".join(self._fragments) if self._fragments else ""
 
-        query = f"""
+        return f"""
 query{operation_name}{variable_defs} {{
   {self._query_name}{query_args} {{
 {field_selection}
@@ -121,8 +122,6 @@ query{operation_name}{variable_defs} {{
 }}
 {fragments}
         """.strip()
-
-        return query
 
     def _build_variable_definitions(self) -> str:
         """Build GraphQL variable definitions from current variables."""
@@ -140,35 +139,34 @@ query{operation_name}{variable_defs} {{
         """Infer GraphQL variable type from Python value."""
         if value is None:
             return "String"
-        elif isinstance(value, bool):
+        if isinstance(value, bool):
             return "Boolean"
-        elif isinstance(value, int):
+        if isinstance(value, int):
             return "Int"
-        elif isinstance(value, float):
+        if isinstance(value, float):
             return "Float"
-        elif isinstance(value, str):
+        if isinstance(value, str):
             # Use ID! for fields named "id" or ending with "Id"
             if variable_name == "id" or variable_name.endswith("Id"):
                 return "ID!"
             if variable_name == "createdAtMin" or variable_name == "createdAtMax":
                 return "DateTime"
             return "String"
-        elif isinstance(value, list):
+        if isinstance(value, list):
             if value:
                 item_type = self._infer_variable_type(value[0], variable_name)
                 return f"[{item_type}]"
             return "[String]"
-        elif isinstance(value, AppEventType):
+        if isinstance(value, AppEventType):
             return "AppEventType"
-        elif isinstance(value, TransactionType):
+        if isinstance(value, TransactionType):
             return "TransactionType"
         # Handle pagination and date range inputs as generic objects
-        elif hasattr(value, "first") or hasattr(value, "last"):
+        if hasattr(value, "first") or hasattr(value, "last"):
             return "PaginationInput"
-        elif hasattr(value, "min_date") or hasattr(value, "max_date"):
+        if hasattr(value, "min_date") or hasattr(value, "max_date"):
             return "DateRangeInput"
-        else:
-            return "String"
+        return "String"
 
     def get_result_type(self) -> type:
         """Get the expected result type (returns dict for custom queries)."""
@@ -255,8 +253,7 @@ class CustomConnectionQueryBuilder(CustomQueryBuilder):
         """
         if forward:
             return self.add_variable("after", cursor)
-        else:
-            return self.add_variable("before", cursor)
+        return self.add_variable("before", cursor)
 
     def build_query(self) -> str:
         """Build the complete GraphQL query string."""
@@ -292,7 +289,7 @@ class CustomConnectionQueryBuilder(CustomQueryBuilder):
         # Build fragments
         fragments = "\n".join(self._fragments) if self._fragments else ""
 
-        query = f"""
+        return f"""
 query{operation_name}{variable_defs} {{
   {self._query_name}{query_args} {{
 {field_selection}
@@ -300,8 +297,6 @@ query{operation_name}{variable_defs} {{
 }}
 {fragments}
         """.strip()
-
-        return query
 
 
 class CustomFilterableQueryBuilder(CustomQueryBuilder):

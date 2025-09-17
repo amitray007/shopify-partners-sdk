@@ -1,23 +1,23 @@
 """Base HTTP client for the Shopify Partners GraphQL API."""
 
+from contextlib import suppress
 import json
 import logging
-from contextlib import suppress
 from typing import Any, Optional
 
 import requests
 
-from ..config import ShopifyPartnersSDKSettings
-from ..exceptions.auth import ForbiddenError, UnauthorizedError
-from ..exceptions.graphql import (
+from shopify_partners_sdk.client.auth import AuthenticationHandler
+from shopify_partners_sdk.client.rate_limiter import RateLimiter
+from shopify_partners_sdk.client.retry import RetryHandler
+from shopify_partners_sdk.config import ShopifyPartnersSDKSettings
+from shopify_partners_sdk.exceptions.auth import ForbiddenError, UnauthorizedError
+from shopify_partners_sdk.exceptions.graphql import (
     GraphQLError,
     GraphQLMultipleErrors,
     GraphQLResponseError,
 )
-from ..exceptions.rate_limit import RateLimitServerError
-from .auth import AuthenticationHandler
-from .rate_limiter import RateLimiter
-from .retry import RetryHandler
+from shopify_partners_sdk.exceptions.rate_limit import RateLimitServerError
 
 logger = logging.getLogger(__name__)
 
@@ -206,12 +206,12 @@ class BaseGraphQLClient:
             if response.status_code == 401:
                 self._error_count += 1
                 raise UnauthorizedError("API request was not authorized")
-            elif response.status_code == 403:
+            if response.status_code == 403:
                 self._error_count += 1
                 raise ForbiddenError(
                     "API request was forbidden - insufficient permissions"
                 )
-            elif response.status_code == 429:
+            if response.status_code == 429:
                 self._error_count += 1
                 retry_after = None
                 if "retry-after" in response.headers:
@@ -288,7 +288,7 @@ class BaseGraphQLClient:
 
             if len(graphql_errors) == 1:
                 raise graphql_errors[0]
-            elif graphql_errors:
+            if graphql_errors:
                 raise GraphQLMultipleErrors(graphql_errors)
 
         # Validate response structure

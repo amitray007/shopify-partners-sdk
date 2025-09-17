@@ -2,7 +2,7 @@
 
 from typing import Any, Callable, Optional, TypeVar
 
-from ..models.base import Connection, Node
+from shopify_partners_sdk.models.base import Connection, Node
 
 T = TypeVar("T", bound=Node)
 ConnectionType = TypeVar("ConnectionType", bound=Connection)
@@ -248,11 +248,9 @@ class PaginatedResult:
         """
         pages = []
         page_limit = max_pages or self._max_pages
-        page_count = 0
 
-        for page in self.pages():
+        for page_count, page in enumerate(self.pages(), 1):
             pages.append(page)
-            page_count += 1
             if page_limit and page_count >= page_limit:
                 break
 

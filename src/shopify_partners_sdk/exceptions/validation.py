@@ -6,8 +6,6 @@ from .base import ShopifyPartnersSDKError
 class ValidationError(ShopifyPartnersSDKError):
     """Exception raised for validation errors."""
 
-    pass
-
 
 class InvalidGlobalIdError(ValidationError):
     """Exception raised for invalid Global ID format."""

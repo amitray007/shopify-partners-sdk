@@ -4,7 +4,7 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.poetry]
 name = "shopify-partners-sdk"
-version = "0.3.0"
+version = "0.3.1"
 description = "Modern Python GraphQL SDK for Shopify Partners API"
 authors = ["Amit Ray <mail@amitray.dev>"]
 maintainers = ["Amit Ray <mail@amitray.dev>"]

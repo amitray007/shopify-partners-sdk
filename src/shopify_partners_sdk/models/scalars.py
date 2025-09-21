@@ -8,7 +8,7 @@ import json
 from typing import Any
 from urllib.parse import urlparse
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from pydantic_core import core_schema
 
 from .enums import Currency
@@ -257,7 +257,4 @@ class Money(BaseModel):
         """Detailed representation of Money."""
         return f"Money(amount={self.amount}, currency_code='{self.currency_code}')"
 
-    class Config:
-        """Pydantic configuration."""
-
-        allow_population_by_field_name = True
+    model_config = ConfigDict(populate_by_name=True)

@@ -2,7 +2,7 @@
 
 from typing import Optional
 
-from pydantic import Field, field_validator
+from pydantic import ConfigDict, Field, field_validator
 
 from .base import ShopifyPartnersBaseModel
 from .scalars import GlobalID, MoneyAmount
@@ -24,10 +24,7 @@ class MoneyInput(ShopifyPartnersBaseModel):
             raise ValueError("Currency code must be a 3-character string")
         return v.upper()
 
-    class Config:
-        """Pydantic configuration."""
-
-        allow_population_by_field_name = True
+    model_config = ConfigDict(populate_by_name=True)
 
 
 class AppCreditCreateInput(ShopifyPartnersBaseModel):
@@ -47,10 +44,7 @@ class AppCreditCreateInput(ShopifyPartnersBaseModel):
             raise ValueError("Description must be between 1 and 255 characters")
         return v
 
-    class Config:
-        """Pydantic configuration."""
-
-        allow_population_by_field_name = True
+    model_config = ConfigDict(populate_by_name=True)
 
 
 class EventsinkCreateInput(ShopifyPartnersBaseModel):
@@ -69,10 +63,7 @@ class EventsinkCreateInput(ShopifyPartnersBaseModel):
             raise ValueError("URL must be a valid HTTP or HTTPS URL")
         return v
 
-    class Config:
-        """Pydantic configuration."""
-
-        allow_population_by_field_name = True
+    model_config = ConfigDict(populate_by_name=True)
 
 
 class EventsinkDeleteInput(ShopifyPartnersBaseModel):
@@ -82,10 +73,7 @@ class EventsinkDeleteInput(ShopifyPartnersBaseModel):
     app_id: GlobalID = Field(..., description="The app ID", alias="appId")
     topic: str = Field(..., description="Event topic")
 
-    class Config:
-        """Pydantic configuration."""
-
-        allow_population_by_field_name = True
+    model_config = ConfigDict(populate_by_name=True)
 
 
 class PaginationInput(ShopifyPartnersBaseModel):

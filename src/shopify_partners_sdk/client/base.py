@@ -123,17 +123,6 @@ class BaseGraphQLClient:
         # Validate authentication
         self._auth.validate_credentials()
 
-        # Print query for debugging
-        # TODO: Remove once debugging is done
-        print("🔍 Executing GraphQL Query:")
-        print("=" * 50)
-        print(query)
-        if variables:
-            print(f"\n📝 Variables: {variables}")
-        if operation_name:
-            print(f"\n🏷️  Operation: {operation_name}")
-        print("=" * 50)
-
         # Prepare request
         payload = {"query": query}
         if variables:

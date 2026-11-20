@@ -1,8 +1,9 @@
 """Field selection utilities for dynamic GraphQL query building."""
 
-from typing import TYPE_CHECKING, Any, Union
+from typing import TYPE_CHECKING, Any
 
 from shopify_partners_sdk.exceptions.validation import SchemaValidationError
+from shopify_partners_sdk.schema import named_type
 from shopify_partners_sdk.values import graphql_literal
 
 if TYPE_CHECKING:
@@ -181,7 +182,7 @@ class FieldSelector:
     def _render(
         self,
         name: str,
-        value: Union[str, "FieldSelector"],
+        value: "str | FieldSelector",
         indent: int,
         schema: "PartnerSchema | None",
         parent: str | None,
@@ -193,6 +194,10 @@ class FieldSelector:
         args = ""
         if name.startswith(FRAGMENT_PREFIX):
             child_type = name[len(FRAGMENT_PREFIX) :].strip()
+            if not value:
+                raise SchemaValidationError(
+                    f"Fragment on '{child_type}' must select at least one field."
+                )
             if schema is not None and parent is not None:
                 schema.check_fragment(parent, child_type)
         else:
@@ -209,6 +214,10 @@ class FieldSelector:
     def __str__(self) -> str:
         """String representation."""
         return self.build()
+
+    def __len__(self) -> int:
+        """Number of selected fields; an empty selector is falsy."""
+        return len(self._fields)
 
     def copy(self) -> "FieldSelector":
         """Create a deep copy of this field selector, including field arguments.
@@ -238,8 +247,8 @@ def _check_field(
             raise SchemaValidationError(f"'{TYPENAME}' takes no sub-selection.")
         return None
 
-    field_type: str = schema.field(parent, name)["type"].strip("[]!")
-    has_subfields = isinstance(value, FieldSelector) and bool(value._fields)
+    field_type = named_type(schema.field(parent, name)["type"])
+    has_subfields = isinstance(value, FieldSelector) and bool(value)
     if schema.is_leaf(field_type) and isinstance(value, FieldSelector):
         raise SchemaValidationError(
             f"Field '{parent}.{name}' returns {field_type}, which takes no "

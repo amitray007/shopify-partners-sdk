@@ -1,6 +1,6 @@
 """App-related model objects for the Shopify Partners API."""
 
-from typing import Optional
+from typing import TYPE_CHECKING, Any
 
 from pydantic import Field
 
@@ -9,6 +9,7 @@ from shopify_partners_sdk.models.base import (
     Edge,
     Node,
     ShopifyPartnersBaseModel,
+    typename_union,
 )
 from shopify_partners_sdk.models.enums import AppEventType
 from shopify_partners_sdk.models.objects.shop import Shop  # noqa: TC001
@@ -25,7 +26,7 @@ class App(Node):
         ..., description="Unique application API identifier", alias="apiKey"
     )
     name: str = Field(..., description="The name of the app")
-    events: Optional["AppEventConnection"] = Field(
+    events: "AppEventConnection | None" = Field(
         None, description="App events; present only when selected"
     )
 
@@ -200,10 +201,26 @@ class UsageChargeApplied(AppEvent):
     )
 
 
+def _event_type_name(data: dict[str, Any]) -> str | None:
+    """RELATIONSHIP_INSTALLED -> RelationshipInstalled (event class names)."""
+    event_type = data.get("type")
+    if not isinstance(event_type, str):
+        return None
+    return "".join(part.capitalize() for part in event_type.split("_"))
+
+
+if TYPE_CHECKING:
+    AppEventUnion = AppEvent
+else:
+    AppEventUnion = typename_union(
+        AppEvent.__subclasses__(), AppEvent, infer=_event_type_name
+    )
+
+
 class AppEventEdge(Edge):
     """Edge for app event connections."""
 
-    node: AppEvent = Field(..., description="The app event")
+    node: AppEventUnion = Field(..., description="The app event, as its own type")
 
 
 class AppEventConnection(Connection):
@@ -212,7 +229,7 @@ class AppEventConnection(Connection):
     edges: list[AppEventEdge] = Field(..., description="List of app event edges")
 
     @property
-    def events(self) -> list[AppEvent]:
+    def events(self) -> list[AppEventUnion]:
         """Get list of app events from edges."""
         return [edge.node for edge in self.edges]
 

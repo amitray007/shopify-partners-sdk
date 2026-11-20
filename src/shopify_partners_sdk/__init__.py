@@ -8,7 +8,7 @@ This client provides two simple ways to interact with the Shopify Partners Graph
 
 from collections.abc import Iterator
 import logging
-from typing import Any, Optional, Self, Union
+from typing import Any, Self
 
 import requests
 

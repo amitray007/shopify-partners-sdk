@@ -368,6 +368,12 @@ Shopify changed the Partners API. Update your code in these places:
 - Changed: `appCreditCreate` takes `appId`, `shopId`, `description`, `amount`, and `test` as separate arguments. `shopId` is required.
 - Changed: `Transaction` is an interface with `id` and `createdAt`. Request amounts and shops through fragments such as `AppSubscriptionSale`.
 - Removed from the SDK: the `shopify_partners_sdk.pagination` package. Use `client.paginate()`.
+- API versions: the default is now 2026-10. Versions 2024-10 to 2025-07 raise `ValueError`.
+- Enums now match the schema value for value. Removed: `ConversationStatus`, `JobStatus`, `MessageSentVia`, `ChargeStatus`, `ServiceType`, `ApiVersionStatus`, `TaxType` (use `TaxTransactionType`), and `EventsinkQueue`. `TransactionType` lost `LEGACY_TRANSACTION`, `REFERRAL_TRANSACTION`, and `TAX_TRANSACTION`, which the API never accepted. New: `EventType`, `ChargeType`, `CreditStatus`, `EarningType`, `EventOrder`, `RelationshipState`, `SubjectType`, `SubscriptionStatusState`, `TiersMode`, `ReferralCategory`, `TaxTransactionType`. Enums are `StrEnum`, so `str(Currency.USD)` is `"USD"`.
+- Models: fields the API does not have are gone (for example `AppCredit.created_at`, `AppCharge.status`, and the `id` on app events). `UserError.field` is a list of path segments. Connection edges parse into the type named by `__typename`, so select `__typename` on interface nodes.
+- `CommonFields` presets select only fields that exist: `basic_app()` is `id`, `name`, `apiKey`; `basic_shop()` is `id`, `name`, `myshopifyDomain`; `basic_transaction()` is `id`, `createdAt`, `__typename`; `basic_node()` is `id`.
+- Mutations are no longer retried after a timeout, connection error, or 5xx response, because a retry could apply them twice. They still retry on HTTP 429.
+- `paginate()` rejects a `page_size` outside 1 to `max_page_size` (250 by default).
 - Python: 3.11 or later.
 
 Run your queries against the 2026-10 schema offline. The builders raise `SchemaValidationError` for anything the version no longer has.

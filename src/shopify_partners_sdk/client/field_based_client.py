@@ -4,6 +4,7 @@ from collections.abc import Iterator
 import logging
 from typing import Any
 
+from shopify_partners_sdk.exceptions.validation import InvalidPageSizeError
 from shopify_partners_sdk.mutations.custom_builders import CustomMutationBuilder
 from shopify_partners_sdk.queries.custom_builders import (
     CustomConnectionQueryBuilder,
@@ -119,7 +120,13 @@ class FieldBasedShopifyPartnersClient:
         Yields:
             Each node's data, in API order
         """
-        first = page_size or self._client.settings.default_page_size
+        first = self._page_size(page_size)
+        reserved = {"first", "last", "before"} & variables.keys()
+        if reserved:
+            raise ValueError(
+                f"paginate() sets {', '.join(sorted(reserved))} itself; "
+                "use page_size and after instead"
+            )
         cursor: str | None = variables.pop("after", None)
         pages = 0
         while max_pages is None or pages < max_pages:
@@ -131,9 +138,23 @@ class FieldBasedShopifyPartnersClient:
             edges = connection.get("edges") or []
             for edge in edges:
                 yield edge["node"]
-            if not edges or not connection["pageInfo"]["hasNextPage"]:
+            next_cursor = edges[-1]["cursor"] if edges else None
+            # Stop on a repeated cursor too, so a stuck hasNextPage cannot loop forever.
+            if not connection["pageInfo"]["hasNextPage"] or next_cursor in (
+                None,
+                cursor,
+            ):
                 return
-            cursor = edges[-1]["cursor"]
+            cursor = next_cursor
+
+    def _page_size(self, page_size: int | None) -> int:
+        limit = self._client.settings.max_page_size
+        size = (
+            self._client.settings.default_page_size if page_size is None else page_size
+        )
+        if not 1 <= size <= limit:
+            raise InvalidPageSizeError(size, limit)
+        return size
 
     def execute_query_builder(self, builder: OperationBuilder) -> dict[str, Any]:
         """Execute a query builder and return the response ``data``.

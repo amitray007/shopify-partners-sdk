@@ -377,7 +377,10 @@ class TestTransactions:
         payload = {
             "pageInfo": page_info_json(),
             "edges": [
-                {"cursor": "c1", "node": sale_json()},
+                {
+                    "cursor": "c1",
+                    "node": {**sale_json(), "__typename": "AppOneTimeSale"},
+                },
                 {
                     "cursor": "c2",
                     "node": {

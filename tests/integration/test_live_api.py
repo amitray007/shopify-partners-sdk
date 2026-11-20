@@ -48,4 +48,6 @@ def test_events_query_is_accepted(client):
         "Charge", FieldSelector(["chargeType"]).add_money_field("amount")
     )
     events = list(client.paginate("events", node, page_size=5, max_pages=1))
-    assert all("eventType" in e for e in events)
+    assert len(events) <= 5
+    for event in events:
+        assert event["eventType"] in client.schema.enum_values("EventType")

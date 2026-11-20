@@ -26,7 +26,7 @@ def to_json_value(value: Any) -> Any:
     if isinstance(value, (datetime, date)):
         return value.isoformat()
     if isinstance(value, Decimal):
-        return str(value)
+        return format(value, "f")
     if isinstance(value, Mapping):
         return {str(k): to_json_value(v) for k, v in value.items()}
     if isinstance(value, (list, tuple, set)):
@@ -77,7 +77,7 @@ def _normalize_scalar(value: Any) -> Any:
     if isinstance(value, (datetime, date)):
         return value.isoformat()
     if isinstance(value, Decimal):
-        return str(value)
+        return format(value, "f")
     if isinstance(value, (tuple, set)):
         return list(value)
     return value

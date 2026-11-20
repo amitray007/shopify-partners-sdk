@@ -1,17 +1,17 @@
 """Transaction-related model objects for the Shopify Partners API."""
 
-from typing import Optional
+from typing import TYPE_CHECKING
 
 from pydantic import AliasChoices, Field
 
-from shopify_partners_sdk.models.base import Connection, Edge, Node
+from shopify_partners_sdk.models.base import Connection, Edge, Node, typename_union
 from shopify_partners_sdk.models.enums import (
     AppPricingInterval,
     ReferralCategory,
     TaxTransactionType,
 )
 from shopify_partners_sdk.models.objects.app import App  # noqa: TC001
-from shopify_partners_sdk.models.objects.shop import Shop  # noqa: TC001
+from shopify_partners_sdk.models.objects.shop import Shop
 from shopify_partners_sdk.models.scalars import DateTime, GlobalID, Money
 
 
@@ -54,7 +54,7 @@ class AppOneTimeSale(Transaction):
         None, description="Regulatory operating fees", alias="regulatoryOperatingFee"
     )
     app: "App" = Field(..., description="The app associated with the sale")
-    shop: Optional["Shop"] = Field(None, description="The shop that made the purchase")
+    shop: Shop | None = Field(None, description="The shop that made the purchase")
 
     def __str__(self) -> str:
         """String representation showing sale details."""
@@ -86,7 +86,7 @@ class AppSubscriptionSale(Transaction):
         None, description="Billing frequency", alias="billingInterval"
     )
     app: "App" = Field(..., description="The app associated with the sale")
-    shop: Optional["Shop"] = Field(None, description="The shop that made the purchase")
+    shop: Shop | None = Field(None, description="The shop that made the purchase")
 
     def __str__(self) -> str:
         """String representation showing subscription details."""
@@ -116,7 +116,7 @@ class AppUsageSale(Transaction):
         None, description="Regulatory operating fees", alias="regulatoryOperatingFee"
     )
     app: "App" = Field(..., description="The app associated with the sale")
-    shop: Optional["Shop"] = Field(None, description="The shop that made the purchase")
+    shop: Shop | None = Field(None, description="The shop that made the purchase")
 
     def __str__(self) -> str:
         """String representation showing usage sale details."""
@@ -145,7 +145,7 @@ class AppSaleAdjustment(Transaction):
         None, description="Regulatory fee adjustment", alias="regulatoryOperatingFee"
     )
     app: "App" = Field(..., description="The app associated with the adjustment")
-    shop: Optional["Shop"] = Field(None, description="The shop for the adjustment")
+    shop: Shop | None = Field(None, description="The shop for the adjustment")
 
     def __str__(self) -> str:
         """String representation showing adjustment details."""
@@ -172,7 +172,7 @@ class AppSaleCredit(Transaction):
         None, description="Regulatory fee credit", alias="regulatoryOperatingFee"
     )
     app: "App" = Field(..., description="The app associated with the credit")
-    shop: Optional["Shop"] = Field(None, description="The shop for the credit")
+    shop: Shop | None = Field(None, description="The shop for the credit")
 
     def __str__(self) -> str:
         """String representation showing credit details."""
@@ -182,7 +182,7 @@ class AppSaleCredit(Transaction):
 class ServiceSale(Transaction):
     """A transaction for Expert Marketplace service sales."""
 
-    shop: Optional["Shop"] = Field(None, description="The shop involved")
+    shop: Shop | None = Field(None, description="The shop involved")
     gross_amount: Money | None = Field(
         None, description="Total service amount", alias="grossAmount"
     )
@@ -207,7 +207,7 @@ class ServiceSale(Transaction):
 class ServiceSaleAdjustment(Transaction):
     """A transaction for Expert Marketplace service sale adjustments."""
 
-    shop: Optional["Shop"] = Field(None, description="The shop involved")
+    shop: Shop | None = Field(None, description="The shop involved")
     gross_amount: Money | None = Field(
         None, description="Adjustment amount", alias="grossAmount"
     )
@@ -232,7 +232,7 @@ class ServiceSaleAdjustment(Transaction):
 class ThemeSale(Transaction):
     """A transaction for theme marketplace sales."""
 
-    shop: Optional["Shop"] = Field(None, description="The shop involved")
+    shop: Shop | None = Field(None, description="The shop involved")
     gross_amount: Money | None = Field(
         None, description="Total theme amount", alias="grossAmount"
     )
@@ -257,7 +257,7 @@ class ThemeSale(Transaction):
 class ThemeSaleAdjustment(Transaction):
     """A transaction for theme marketplace sale adjustments."""
 
-    shop: Optional["Shop"] = Field(None, description="The shop involved")
+    shop: Shop | None = Field(None, description="The shop involved")
     gross_amount: Money | None = Field(
         None, description="Adjustment amount", alias="grossAmount"
     )
@@ -301,7 +301,7 @@ class ReferralTransaction(Transaction):
 
     amount: Money = Field(..., description="Referral payment amount")
     category: ReferralCategory | None = Field(None, description="Referral category")
-    shop: Optional["Shop"] = Field(None, description="The referred shop")
+    shop: Shop | None = Field(None, description="The referred shop")
 
     def __str__(self) -> str:
         """String representation showing referral details."""
@@ -313,7 +313,7 @@ class ReferralAdjustment(Transaction):
 
     amount: Money = Field(..., description="Referral adjustment amount")
     category: ReferralCategory | None = Field(None, description="Referral category")
-    shop: Optional["Shop"] = Field(None, description="The referred shop")
+    shop: Shop | None = Field(None, description="The referred shop")
 
     def __str__(self) -> str:
         """String representation showing referral adjustment details."""
@@ -324,35 +324,25 @@ class LegacyTransaction(Transaction):
     """A legacy transaction format for historical data."""
 
     amount: Money = Field(..., description="Transaction amount")
-    shop: Optional["Shop"] = Field(None, description="The shop involved")
+    shop: Shop | None = Field(None, description="The shop involved")
 
     def __str__(self) -> str:
         """String representation showing legacy transaction details."""
         return f"LegacyTransaction(amount={self.amount})"
 
 
-# Union type for all transaction types
-TransactionUnion = (
-    AppOneTimeSale
-    | AppSubscriptionSale
-    | AppUsageSale
-    | AppSaleAdjustment
-    | AppSaleCredit
-    | ServiceSale
-    | ServiceSaleAdjustment
-    | ThemeSale
-    | ThemeSaleAdjustment
-    | TaxTransaction
-    | ReferralTransaction
-    | ReferralAdjustment
-    | LegacyTransaction
-)
+if TYPE_CHECKING:
+    TransactionUnion = Transaction
+else:
+    TransactionUnion = typename_union(Transaction.__subclasses__(), Transaction)
 
 
 class TransactionEdge(Edge):
     """Edge for transaction connections."""
 
-    node: TransactionUnion = Field(..., description="The transaction")
+    node: TransactionUnion = Field(
+        ..., description="The transaction, as the type named by __typename"
+    )
 
 
 class TransactionConnection(Connection):

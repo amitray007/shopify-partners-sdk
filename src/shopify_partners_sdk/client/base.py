@@ -3,6 +3,7 @@
 from contextlib import suppress
 import json
 import logging
+import re
 from typing import Any, Self
 
 import requests
@@ -21,6 +22,14 @@ from shopify_partners_sdk.exceptions.rate_limit import RateLimitServerError
 from shopify_partners_sdk.values import to_json_value
 
 logger = logging.getLogger(__name__)
+
+# A mutation definition opens the document or follows another definition's "}".
+_MUTATION_DEFINITION = re.compile(r"(?:\A|\})(?:[\s,]|#[^\n]*)*mutation\b")
+
+
+def is_mutation(document: str) -> bool:
+    """True when a GraphQL document defines a mutation operation."""
+    return _MUTATION_DEFINITION.search(document) is not None
 
 
 class BaseGraphQLClient:
@@ -135,6 +144,7 @@ class BaseGraphQLClient:
         response_data = self._retry_handler.execute_with_retry(
             self._execute_request_with_rate_limiting,
             payload,
+            idempotent=not is_mutation(query),
         )
 
         # Process GraphQL response

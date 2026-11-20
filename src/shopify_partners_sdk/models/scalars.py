@@ -132,6 +132,10 @@ class MoneyAmount(Decimal):
         return core_schema.no_info_after_validator_function(
             cls._validate,
             core_schema.decimal_schema(),
+            # JSON keeps every digit; __str__ rounds to 2 places for display only.
+            serialization=core_schema.plain_serializer_function_ser_schema(
+                lambda value: format(value, "f"), when_used="json"
+            ),
         )
 
     @classmethod

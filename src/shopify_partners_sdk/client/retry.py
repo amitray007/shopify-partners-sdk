@@ -2,6 +2,7 @@
 
 from collections.abc import Callable
 from contextlib import suppress
+import math
 import random
 import time
 from typing import Any, TypeVar
@@ -117,18 +118,25 @@ class RetryHandler:
             return 0.0
         return (self._successful_attempts / self._total_attempts) * 100.0
 
-    def should_retry(self, exception: Exception, attempt: int) -> bool:
+    def should_retry(
+        self, exception: Exception, attempt: int, idempotent: bool = True
+    ) -> bool:
         """Determine if a request should be retried.
 
         Args:
             exception: The exception that occurred
             attempt: Current attempt number (0-based)
+            idempotent: False for requests that must not run twice, such as
+                mutations; those retry only when the server rejected them (429)
 
         Returns:
             True if the request should be retried
         """
         if attempt >= self.max_attempts:
             return False
+
+        if not idempotent:
+            return _is_rate_limited(exception)
 
         if isinstance(exception, RateLimitServerError):
             return True
@@ -153,26 +161,32 @@ class RetryHandler:
         Returns:
             Delay in seconds
         """
-        # Use server-provided retry-after if available
-        if isinstance(exception, RateLimitServerError) and exception.retry_after:
-            return exception.retry_after
-
-        if isinstance(exception, requests.HTTPError):
-            response = exception.response
-            if response is not None and response.status_code == 429:
-                # Check for Retry-After header
-                retry_after = response.headers.get("retry-after")
-                if retry_after:
-                    with suppress(ValueError):
-                        return float(retry_after)
-
-        # Use backoff strategy
+        server_delay = self._server_retry_after(exception)
+        if server_delay is not None:
+            return server_delay
         return self.backoff.calculate_delay(attempt)
+
+    def _server_retry_after(self, exception: Exception) -> float | None:
+        """Retry-After from the server, capped at the backoff maximum."""
+        value: float | None = None
+        if isinstance(exception, RateLimitServerError):
+            value = exception.retry_after
+        elif (
+            isinstance(exception, requests.HTTPError)
+            and exception.response is not None
+            and exception.response.status_code == 429
+        ):
+            with suppress(TypeError, ValueError):
+                value = float(exception.response.headers.get("retry-after", ""))
+        if value is None or not math.isfinite(value) or value <= 0:
+            return None
+        return min(value, self.backoff.max_delay)
 
     def execute_with_retry(
         self,
         func: Callable[..., T],
         *args: Any,
+        idempotent: bool = True,
         **kwargs: Any,
     ) -> T:
         """Execute a function with retry logic.
@@ -180,6 +194,7 @@ class RetryHandler:
         Args:
             func: The function to execute
             *args: Positional arguments for the function
+            idempotent: False when a repeated call could apply twice (mutations)
             **kwargs: Keyword arguments for the function
 
         Returns:
@@ -202,7 +217,7 @@ class RetryHandler:
                 last_exception = e
                 self._failed_attempts += 1
 
-                if not self.should_retry(e, attempt):
+                if not self.should_retry(e, attempt, idempotent):
                     raise e
 
                 if attempt < self.max_attempts:
@@ -246,3 +261,14 @@ class RetryHandler:
             f"success_rate={self.success_rate:.1f}%"
             f")"
         )
+
+
+def _is_rate_limited(exception: Exception) -> bool:
+    """True when the server refused the request (HTTP 429) without processing it."""
+    if isinstance(exception, RateLimitServerError):
+        return True
+    return (
+        isinstance(exception, requests.HTTPError)
+        and exception.response is not None
+        and exception.response.status_code == 429
+    )

@@ -10,8 +10,8 @@ from shopify_partners_sdk.queries.custom_builders import (
     CustomConnectionQueryBuilder,
     CustomFilterableQueryBuilder,
     CustomQueryBuilder,
-    connection_fields,
 )
+from shopify_partners_sdk.queries.fields import connection_fields
 from shopify_partners_sdk.schema import load_schema
 
 pytestmark = pytest.mark.unit

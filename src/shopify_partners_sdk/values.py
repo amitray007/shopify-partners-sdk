@@ -9,6 +9,8 @@ from typing import TYPE_CHECKING, Any
 
 from pydantic import BaseModel
 
+from shopify_partners_sdk.schema import named_type
+
 if TYPE_CHECKING:
     from shopify_partners_sdk.schema import PartnerSchema
 
@@ -46,7 +48,7 @@ def graphql_literal(
     only ``Enum`` members render bare; every other string is quoted.
     """
     value = _normalize_scalar(value)
-    named = type_ref.strip("[]!") if type_ref else None
+    named = named_type(type_ref) if type_ref else None
 
     if value is None:
         return "null"

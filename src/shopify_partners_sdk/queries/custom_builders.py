@@ -11,18 +11,7 @@ from shopify_partners_sdk.schema import (
     named_type,
 )
 
-from .fields import FieldSelector
-
-
-def connection_fields(node_fields: FieldSelector) -> FieldSelector:
-    """Wrap node fields in ``edges { cursor node { ... } } pageInfo { ... }``."""
-    edges = FieldSelector(["cursor"]).add_nested_field("node", node_fields)
-    page_info = FieldSelector(["hasNextPage", "hasPreviousPage"])
-    return (
-        FieldSelector()
-        .add_nested_field("edges", edges)
-        .add_nested_field("pageInfo", page_info)
-    )
+from .fields import FieldSelector, connection_fields
 
 
 class OperationBuilder:
@@ -169,8 +158,6 @@ class OperationBuilder:
 
 class CustomQueryBuilder(OperationBuilder):
     """Custom query builder for any top-level Partner API query."""
-
-    operation: ClassVar[Operation] = "query"
 
     def get_query_name(self) -> str:
         """Get the root query field name."""

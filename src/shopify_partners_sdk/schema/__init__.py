@@ -6,7 +6,7 @@ query variables exactly and catches invalid field names before a request is sent
 """
 
 from difflib import get_close_matches
-from functools import cache, lru_cache
+from functools import cache
 from importlib.resources import files
 import json
 from typing import Any, Literal

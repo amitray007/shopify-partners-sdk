@@ -11,9 +11,8 @@ from shopify_partners_sdk.queries.custom_builders import (
     CustomFilterableQueryBuilder,
     CustomQueryBuilder,
     OperationBuilder,
-    connection_fields,
 )
-from shopify_partners_sdk.queries.fields import FieldSelector
+from shopify_partners_sdk.queries.fields import FieldSelector, connection_fields
 from shopify_partners_sdk.schema import PartnerSchema, load_schema
 
 from .base import BaseGraphQLClient

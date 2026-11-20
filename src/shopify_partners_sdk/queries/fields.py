@@ -110,20 +110,11 @@ class FieldSelector:
         Returns:
             Self for chaining
         """
-        connection_selector = FieldSelector()
-
-        if include_edges:
-            edge_selector = FieldSelector(["cursor"])
-            edge_selector.add_nested_field("node", node_fields)
-            connection_selector.add_nested_field("edges", edge_selector)
-        else:
-            # Direct node selection (for some GraphQL schemas)
-            connection_selector.add_nested_field("nodes", node_fields)
-
-        if include_page_info:
-            page_info_selector = FieldSelector(["hasNextPage", "hasPreviousPage"])
-            connection_selector.add_nested_field("pageInfo", page_info_selector)
-
+        connection_selector = connection_fields(
+            node_fields,
+            include_edges=include_edges,
+            include_page_info=include_page_info,
+        )
         connection_selector._args = dict(connection_args)
 
         self._fields[field] = connection_selector
@@ -138,8 +129,7 @@ class FieldSelector:
         Returns:
             Self for chaining
         """
-        money_selector = FieldSelector(["amount", "currencyCode"])
-        self._fields[field] = money_selector
+        self._fields[field] = CommonFields.money_fields()
         return self
 
     def remove_field(self, field: str) -> "FieldSelector":
@@ -233,6 +223,24 @@ class FieldSelector:
             else:
                 new_selector._fields[field_name] = field_value
         return new_selector
+
+
+def connection_fields(
+    node_fields: FieldSelector,
+    *,
+    include_edges: bool = True,
+    include_page_info: bool = True,
+) -> FieldSelector:
+    """Wrap node fields in ``edges { cursor node { ... } } pageInfo { ... }``."""
+    connection = FieldSelector()
+    if include_edges:
+        edges = FieldSelector(["cursor"]).add_nested_field("node", node_fields)
+        connection.add_nested_field("edges", edges)
+    else:
+        connection.add_nested_field("nodes", node_fields)
+    if include_page_info:
+        connection.add_nested_field("pageInfo", CommonFields.page_info())
+    return connection
 
 
 def _check_field(

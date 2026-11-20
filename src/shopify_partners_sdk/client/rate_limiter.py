@@ -89,6 +89,7 @@ class RateLimiter:
         """Take tokens from the bucket and record the request. Hold the lock."""
         self._tokens -= tokens
         self._total_requests += 1
+        self._recent_request_count()  # prune entries older than the 1s window
         self._request_times.append(time.monotonic())
 
     def _refill_tokens(self) -> None:

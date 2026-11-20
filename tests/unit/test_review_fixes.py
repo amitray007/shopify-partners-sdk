@@ -265,3 +265,15 @@ class TestUserErrorField:
         )
         assert error.field == ["amount", "currencyCode"]
         assert str(error) == "UserError(field='amount.currencyCode', message='bad')"
+
+
+class TestRateLimiterMemory:
+    def test_request_history_stays_within_one_second(self, monkeypatch):
+        from shopify_partners_sdk.client import rate_limiter
+
+        clock = iter(i * 0.5 for i in range(10_000))
+        monkeypatch.setattr(rate_limiter.time, "monotonic", lambda: next(clock))
+        limiter = rate_limiter.RateLimiter(rate_limit=10.0)
+        for _ in range(200):
+            assert limiter.try_acquire()
+        assert len(limiter._request_times) <= 3

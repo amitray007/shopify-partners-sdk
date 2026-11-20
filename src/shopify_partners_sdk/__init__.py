@@ -6,18 +6,39 @@ This client provides two simple ways to interact with the Shopify Partners Graph
 2. FieldSelector - Build queries dynamically with field selection
 """
 
+from collections.abc import Iterator
 import logging
-from typing import Any, Optional
+from typing import Any, Optional, Self, Union
 
 import requests
 
 from .client.base import BaseGraphQLClient
 from .client.field_based_client import FieldBasedShopifyPartnersClient
 from .config import ShopifyPartnersSDKSettings
+from .exceptions.validation import SchemaValidationError
 from .queries.fields import CommonFields, FieldSelector
+from .schema import SUPPORTED_API_VERSIONS, PartnerSchema, load_schema
 from .version import __version__
 
 logger = logging.getLogger(__name__)
+
+
+def _explicit_settings(
+    organization_id: int | str | None,
+    access_token: str | None,
+    api_version: str | None,
+) -> dict[str, Any]:
+    """Settings the caller passed; anything omitted comes from the environment."""
+    explicit: dict[str, Any] = {}
+    if organization_id is not None:
+        if not str(organization_id).isdigit():
+            raise ValueError("organization_id must be a positive integer")
+        explicit["organization_id"] = int(organization_id)
+    if access_token is not None:
+        explicit["access_token"] = access_token
+    if api_version:
+        explicit["api_version"] = api_version
+    return explicit
 
 
 class ShopifyPartnersClient:
@@ -31,51 +52,54 @@ class ShopifyPartnersClient:
 
     def __init__(
         self,
-        organization_id: int,
-        access_token: str,
-        api_version: str = "2025-04",
-        http_client: Optional[requests.Session] = None,
-    ):
+        organization_id: int | str | None = None,
+        access_token: str | None = None,
+        api_version: str | None = None,
+        http_client: requests.Session | None = None,
+    ) -> None:
         """Initialize the client.
+
+        Each argument left out falls back to its SHOPIFY_PARTNERS_* environment
+        variable (or a local .env file), then to the default.
 
         Args:
             organization_id: Shopify Partners organization ID
-            access_token: API access token (must start with 'prtapi_')
-            api_version: API version to use (default: 2025-04)
+                (SHOPIFY_PARTNERS_ORGANIZATION_ID)
+            access_token: API access token starting with 'prtapi_'
+                (SHOPIFY_PARTNERS_ACCESS_TOKEN)
+            api_version: One of SUPPORTED_API_VERSIONS
+                (SHOPIFY_PARTNERS_API_VERSION, default 2026-10)
             http_client: Optional custom HTTP client
 
         Raises:
-            ValueError: If credentials are invalid
+            ValueError: If credentials or the API version are invalid
+            AuthenticationError: If no organization ID or access token is available
         """
-        # Create settings
         settings = ShopifyPartnersSDKSettings(
-            organization_id=organization_id,
-            access_token=access_token,
-            api_version=api_version,
+            **_explicit_settings(organization_id, access_token, api_version)
         )
-
-        # Initialize base client
-        self._client = BaseGraphQLClient(
-            organization_id=organization_id,
-            access_token=access_token,
-            settings=settings,
-            http_client=http_client,
+        self._client = BaseGraphQLClient(settings=settings, http_client=http_client)
+        self._field_based = FieldBasedShopifyPartnersClient(
+            self._client, load_schema(settings.api_version)
         )
-
-        # Initialize field-based client
-        self._field_based = FieldBasedShopifyPartnersClient(self._client)
-
-        # Validate credentials
         self._client.auth.validate_credentials()
-
-        logger.info(
-            "Shopify Partners Client initialized",
-            api_version=api_version,
-            organization_id=str(organization_id)[:4] + "***",
+        logger.debug(
+            "Shopify Partners client initialized for API version %s",
+            settings.api_version,
         )
+
+    @property
+    def api_version(self) -> str:
+        """API version this client sends requests to."""
+        return self._client.settings.api_version
+
+    @property
+    def schema(self) -> PartnerSchema:
+        """Bundled schema for this client's API version, used to validate queries."""
+        return self._field_based.schema
 
     def query(
-        self, query_name: str, fields: FieldSelector, **variables
+        self, query_name: str, fields: FieldSelector, **variables: Any
     ) -> dict[str, Any]:
         """Build and execute a query using FieldSelector.
 
@@ -87,23 +111,26 @@ class ShopifyPartnersClient:
         Returns:
             GraphQL response data
 
+        Raises:
+            SchemaValidationError: If the query, a field, or an argument does not
+                exist in this API version
+
         Example:
-            >>> # Simple query
-            >>> fields = FieldSelector().add_fields('id', 'title', 'handle')
-            >>> result = client.query('app', fields, id='123')
+            >>> fields = FieldSelector().add_fields('id', 'name', 'apiKey')
+            >>> result = client.query('app', fields, id='gid://partners/App/123')
             >>>
-            >>> # Connection query with pagination
-            >>> event_fields = FieldSelector().add_field('type')
+            >>> # Nested connection with inline arguments
+            >>> event_fields = FieldSelector().add_fields('type', 'occurredAt')
             >>> app_fields = (FieldSelector()
             ...     .add_field('name')
             ...     .add_connection_field('events', event_fields, first=10))
-            >>> result = client.query('app', app_fields, id='123')
+            >>> result = client.query('app', app_fields, id='gid://partners/App/123')
         """
         query_builder = self._field_based.query(query_name, fields, **variables)
         return self._field_based.execute_query_builder(query_builder)
 
     def connection_query(
-        self, query_name: str, node_fields: FieldSelector, **variables
+        self, query_name: str, node_fields: FieldSelector, **variables: Any
     ) -> dict[str, Any]:
         """Build and execute a connection query using FieldSelector.
 
@@ -116,9 +143,10 @@ class ShopifyPartnersClient:
             GraphQL response data
 
         Example:
-            >>> # Query apps with pagination
-            >>> app_fields = FieldSelector().add_fields('id', 'title', 'handle')
-            >>> result = client.connection_query('apps', app_fields, first=25)
+            >>> result = client.connection_query(
+            ...     'transactions', CommonFields.basic_transaction(), first=25
+            ... )
+            >>> edges = result['transactions']['edges']
         """
         query_builder = self._field_based.connection_query(
             query_name, node_fields, **variables
@@ -126,7 +154,7 @@ class ShopifyPartnersClient:
         return self._field_based.execute_query_builder(query_builder)
 
     def mutation(
-        self, mutation_name: str, result_fields: FieldSelector, **variables
+        self, mutation_name: str, result_fields: FieldSelector, **variables: Any
     ) -> dict[str, Any]:
         """Build and execute a mutation using FieldSelector.
 
@@ -139,19 +167,17 @@ class ShopifyPartnersClient:
             GraphQL response data
 
         Example:
-            >>> # Create app credit
             >>> result_fields = (FieldSelector()
             ...     .add_nested_field('appCredit', FieldSelector()
-            ...         .add_fields('id', 'description')
+            ...         .add_fields('id', 'name')
             ...         .add_money_field('amount'))
-            ...     .add_nested_field('userErrors', FieldSelector()
-            ...         .add_fields('field', 'message')))
-            >>> input_data = {
-            ...     "appId": "123",
-            ...     "amount": {"amount": "10.00", "currencyCode": "USD"}
-            ... }
+            ...     .add_nested_field('userErrors', CommonFields.user_error()))
             >>> result = client.mutation(
-            ...     'appCreditCreate', result_fields, input=input_data
+            ...     'appCreditCreate', result_fields,
+            ...     appId='gid://partners/App/123',
+            ...     shopId='gid://partners/Shop/456',
+            ...     description='Refund for downtime',
+            ...     amount={'amount': '10.00', 'currencyCode': 'USD'},
             ... )
         """
         mutation_builder = self._field_based.mutation(
@@ -159,11 +185,40 @@ class ShopifyPartnersClient:
         )
         return self._field_based.execute_mutation_builder(mutation_builder)
 
+    def paginate(
+        self,
+        query_name: str,
+        node_fields: FieldSelector,
+        page_size: int | None = None,
+        max_pages: int | None = None,
+        **variables: Any,
+    ) -> Iterator[dict[str, Any]]:
+        """Iterate over every node of a connection, requesting pages as needed.
+
+        Args:
+            query_name: Connection query, e.g. 'transactions' or 'events'
+            node_fields: Fields to select on each node
+            page_size: Nodes per request (defaults to settings.default_page_size)
+            max_pages: Stop after this many requests (None means no limit)
+            **variables: Other query arguments
+
+        Example:
+            >>> for event in client.paginate(
+            ...     'events',
+            ...     FieldSelector().add_fields('id', 'eventType', 'occurredAt'),
+            ...     filter={'eventTypes': ['RELATIONSHIP_INSTALLED']},
+            ... ):
+            ...     print(event['eventType'])
+        """
+        return self._field_based.paginate(
+            query_name, node_fields, page_size, max_pages, **variables
+        )
+
     def execute_raw(
         self,
         query: str,
-        variables: Optional[dict[str, Any]] = None,
-        operation_name: Optional[str] = None,
+        variables: dict[str, Any] | None = None,
+        operation_name: str | None = None,
     ) -> dict[str, Any]:
         """Execute a raw GraphQL query and return the full response.
 
@@ -173,23 +228,22 @@ class ShopifyPartnersClient:
             operation_name: Operation name (for multi-operation queries)
 
         Returns:
-            Full GraphQL response including data, errors, and extensions
+            The full GraphQL response: ``data`` and any ``extensions``
+
+        Raises:
+            GraphQLError: If the response contains GraphQL errors
 
         Example:
             >>> query = '''
             ... query GetApp($id: ID!) {
             ...   app(id: $id) {
             ...     id
-            ...     title
-            ...     handle
+            ...     name
             ...   }
             ... }
             ... '''
-            >>> response = client.execute_raw(query, {"id": "123"})
-            >>> if response.get("errors"):
-            >>>     print("Errors:", response["errors"])
-            >>> else:
-            >>>     print("Data:", response["data"]["app"])
+            >>> response = client.execute_raw(query, {"id": "gid://partners/App/123"})
+            >>> print(response["data"]["app"])
         """
         return self._client.execute_query(query, variables, operation_name)
 
@@ -229,20 +283,19 @@ class ShopifyPartnersClient:
                 "error": str(e),
             }
 
-    def close(self):
+    def close(self) -> None:
         """Close the client and clean up resources.
 
         Example:
             >>> client.close()
         """
         self._client.close()
-        logger.info("Shopify Partners Client closed")
 
-    def __enter__(self):
+    def __enter__(self) -> Self:
         """Context manager entry."""
         return self
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
+    def __exit__(self, *exc_info: object) -> None:
         """Context manager exit."""
         self.close()
 
@@ -269,4 +322,8 @@ __all__ = [
     "CommonFields",
     # Configuration
     "ShopifyPartnersSDKSettings",
+    # Schema
+    "SUPPORTED_API_VERSIONS",
+    "PartnerSchema",
+    "SchemaValidationError",
 ]

@@ -3,7 +3,6 @@
 from collections import deque
 from threading import Lock
 import time
-from typing import Optional
 
 from shopify_partners_sdk.config import ShopifyPartnersSDKSettings
 from shopify_partners_sdk.exceptions.rate_limit import RateLimitExceededError
@@ -20,8 +19,8 @@ class RateLimiter:
 
     def __init__(
         self,
-        rate_limit: Optional[float] = None,
-        settings: Optional[ShopifyPartnersSDKSettings] = None,
+        rate_limit: float | None = None,
+        settings: ShopifyPartnersSDKSettings | None = None,
     ) -> None:
         """Initialize the rate limiter.
 
@@ -30,7 +29,13 @@ class RateLimiter:
             settings: SDK settings instance
         """
         self._settings = settings or ShopifyPartnersSDKSettings()
-        self._rate_limit = rate_limit or self._settings.rate_limit_per_second
+        self._rate_limit = (
+            rate_limit
+            if rate_limit is not None
+            else self._settings.rate_limit_per_second
+        )
+        if self._rate_limit <= 0:
+            raise ValueError("rate_limit must be positive")
 
         # Token bucket parameters
         self._bucket_capacity = max(
@@ -54,16 +59,14 @@ class RateLimiter:
     @property
     def current_rate(self) -> float:
         """Get the current request rate based on recent activity."""
-        current_time = time.monotonic()
-        # Keep only requests from the last second
-        while self._request_times and current_time - self._request_times[0] > 1.0:
-            self._request_times.popleft()
-        return len(self._request_times)
+        with self._lock:
+            return self._recent_request_count()
 
     @property
     def available_tokens(self) -> float:
         """Get the number of tokens currently available."""
-        return self._tokens
+        with self._lock:
+            return self._tokens
 
     @property
     def total_requests(self) -> int:
@@ -75,8 +78,21 @@ class RateLimiter:
         """Get the number of requests that were rate limited."""
         return self._blocked_requests
 
+    def _recent_request_count(self) -> int:
+        """Count requests from the last second. Caller must hold the lock."""
+        current_time = time.monotonic()
+        while self._request_times and current_time - self._request_times[0] > 1.0:
+            self._request_times.popleft()
+        return len(self._request_times)
+
+    def _consume(self, tokens: float) -> None:
+        """Take tokens from the bucket and record the request. Hold the lock."""
+        self._tokens -= tokens
+        self._total_requests += 1
+        self._request_times.append(time.monotonic())
+
     def _refill_tokens(self) -> None:
-        """Refill the token bucket based on elapsed time."""
+        """Refill the token bucket based on elapsed time. Caller must hold the lock."""
         current_time = time.monotonic()
         elapsed = current_time - self._last_refill
 
@@ -86,16 +102,13 @@ class RateLimiter:
             self._tokens = min(self._bucket_capacity, self._tokens + tokens_to_add)
             self._last_refill = current_time
 
-    def _calculate_wait_time(self) -> float:
-        """Calculate how long to wait for the next token."""
-        if self._tokens >= 1.0:
+    def _calculate_wait_time(self, tokens: float = 1.0) -> float:
+        """Calculate how long to wait until `tokens` are available."""
+        if self._tokens >= tokens:
             return 0.0
+        return (tokens - self._tokens) / self._refill_rate
 
-        # Calculate time needed to accumulate 1 token
-        tokens_needed = 1.0 - self._tokens
-        return tokens_needed / self._refill_rate
-
-    def acquire(self, tokens: float = 1.0, timeout: Optional[float] = None) -> None:
+    def acquire(self, tokens: float = 1.0, timeout: float | None = None) -> None:
         """Acquire tokens from the rate limiter.
 
         Args:
@@ -116,39 +129,34 @@ class RateLimiter:
 
         start_time = time.monotonic()
 
-        with self._lock:
-            while True:
+        while True:
+            # Sleep outside the lock so other threads and stats calls are not blocked.
+            with self._lock:
                 self._refill_tokens()
 
                 if self._tokens >= tokens:
-                    # Sufficient tokens available
-                    self._tokens -= tokens
-                    self._total_requests += 1
-                    self._request_times.append(time.monotonic())
+                    self._consume(tokens)
                     return
 
-                # Not enough tokens, calculate wait time
-                wait_time = self._calculate_wait_time()
+                wait_time = self._calculate_wait_time(tokens)
 
-                # Check timeout
                 if timeout is not None:
                     elapsed = time.monotonic() - start_time
                     if elapsed + wait_time > timeout:
                         self._blocked_requests += 1
                         raise RateLimitExceededError(
-                            current_rate=self.current_rate,
+                            current_rate=self._recent_request_count(),
                             max_rate=self._rate_limit,
                             retry_after=wait_time,
                         )
 
-                # Wait for tokens to be available
-                time.sleep(wait_time)
+            time.sleep(wait_time)
 
     def acquire_multiple(
         self,
         count: int,
-        timeout: Optional[float] = None,
-        batch_size: Optional[int] = None,
+        timeout: float | None = None,
+        batch_size: int | None = None,
     ) -> None:
         """Acquire multiple tokens with optional batching.
 
@@ -165,7 +173,8 @@ class RateLimiter:
         if count <= 0:
             raise ValueError("count must be positive")
 
-        batch_size = batch_size or int(self._bucket_capacity)
+        if batch_size is None:
+            batch_size = int(self._bucket_capacity)
         if batch_size <= 0:
             raise ValueError("batch_size must be positive")
 
@@ -190,19 +199,12 @@ class RateLimiter:
         if tokens > self._bucket_capacity:
             return False
 
-        # Use synchronous refill for non-blocking check
-        current_time = time.monotonic()
-        elapsed = current_time - self._last_refill
-
-        if elapsed > 0:
-            tokens_to_add = elapsed * self._refill_rate
-            available_tokens = min(self._bucket_capacity, self._tokens + tokens_to_add)
-        else:
-            available_tokens = self._tokens
-
-        # Would be able to acquire, but don't actually modify state
-        # This is just a check - use acquire() to actually get tokens
-        return available_tokens >= tokens
+        with self._lock:
+            self._refill_tokens()
+            if self._tokens < tokens:
+                return False
+            self._consume(tokens)
+            return True
 
     def reset(self) -> None:
         """Reset the rate limiter to initial state."""
@@ -219,21 +221,23 @@ class RateLimiter:
         Returns:
             Dictionary with rate limiter statistics
         """
-        return {
-            "rate_limit": self._rate_limit,
-            "current_rate": self.current_rate,
-            "available_tokens": self._tokens,
-            "total_requests": self._total_requests,
-            "blocked_requests": self._blocked_requests,
-            "bucket_capacity": self._bucket_capacity,
-        }
+        with self._lock:
+            return {
+                "rate_limit": self._rate_limit,
+                "current_rate": self._recent_request_count(),
+                "available_tokens": self._tokens,
+                "total_requests": self._total_requests,
+                "blocked_requests": self._blocked_requests,
+                "bucket_capacity": self._bucket_capacity,
+            }
 
     def __repr__(self) -> str:
         """String representation of the rate limiter."""
+        stats = self.get_stats()
         return (
             f"RateLimiter("
             f"rate_limit={self._rate_limit}, "
-            f"available_tokens={self._tokens:.2f}, "
-            f"current_rate={self.current_rate:.2f}"
+            f"available_tokens={stats['available_tokens']:.2f}, "
+            f"current_rate={stats['current_rate']:.2f}"
             f")"
         )

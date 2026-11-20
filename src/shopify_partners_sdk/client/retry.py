@@ -1,9 +1,10 @@
 """Retry logic and backoff strategies for the Shopify Partners SDK."""
 
+from collections.abc import Callable
 from contextlib import suppress
 import random
 import time
-from typing import Any, Callable, Optional, TypeVar
+from typing import Any, TypeVar
 
 import requests
 
@@ -61,19 +62,26 @@ class RetryHandler:
 
     def __init__(
         self,
-        max_attempts: int = 3,
-        backoff: Optional[ExponentialBackoff] = None,
-        settings: Optional[ShopifyPartnersSDKSettings] = None,
+        max_attempts: int | None = None,
+        backoff: ExponentialBackoff | None = None,
+        settings: ShopifyPartnersSDKSettings | None = None,
     ) -> None:
         """Initialize the retry handler.
 
         Args:
-            max_attempts: Maximum number of retry attempts
+            max_attempts: Maximum number of retries after the first call
+                (0 means a single call; defaults to settings value)
             backoff: Backoff strategy (defaults to exponential backoff)
             settings: SDK settings instance
         """
         self._settings = settings or ShopifyPartnersSDKSettings()
-        self.max_attempts = max_attempts or self._settings.max_retry_attempts
+        self.max_attempts = (
+            max_attempts
+            if max_attempts is not None
+            else self._settings.max_retry_attempts
+        )
+        if self.max_attempts < 0:
+            raise ValueError("max_attempts must not be negative")
 
         if backoff is None:
             backoff = ExponentialBackoff(
@@ -122,19 +130,17 @@ class RetryHandler:
         if attempt >= self.max_attempts:
             return False
 
-        # Retry on rate limit errors
-        if isinstance(exception, (RateLimitServerError, requests.HTTPError)):
-            if isinstance(exception, requests.HTTPError):
-                # Retry on 429 Too Many Requests
-                if exception.response.status_code == 429:
-                    return True
-                # Retry on 5xx server errors
-                if 500 <= exception.response.status_code < 600:
-                    return True
-            else:
-                return True
+        if isinstance(exception, RateLimitServerError):
+            return True
 
-        # Don't retry on other types of errors (auth, validation, etc.)
+        if isinstance(exception, requests.HTTPError):
+            # No response: failure below HTTP, so retry as a network error.
+            # Test `is None`, never truthiness: Response is falsy on 4xx/5xx.
+            if exception.response is None:
+                return True
+            status = exception.response.status_code
+            return status == 429 or 500 <= status < 600
+
         return isinstance(exception, (requests.ConnectionError, requests.Timeout))
 
     def get_retry_delay(self, exception: Exception, attempt: int) -> float:
@@ -153,7 +159,7 @@ class RetryHandler:
 
         if isinstance(exception, requests.HTTPError):
             response = exception.response
-            if response.status_code == 429:
+            if response is not None and response.status_code == 429:
                 # Check for Retry-After header
                 retry_after = response.headers.get("retry-after")
                 if retry_after:
@@ -182,7 +188,7 @@ class RetryHandler:
         Raises:
             The last exception if all retry attempts fail
         """
-        last_exception: Optional[Exception] = None
+        last_exception: Exception | None = None
 
         for attempt in range(self.max_attempts + 1):
             self._total_attempts += 1

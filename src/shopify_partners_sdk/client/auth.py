@@ -1,9 +1,19 @@
 """Authentication handler for the Shopify Partners API."""
 
-from typing import Optional
-
 from shopify_partners_sdk.config import ShopifyPartnersSDKSettings
 from shopify_partners_sdk.exceptions.auth import AuthenticationError
+
+
+def _normalize_organization_id(value: int | str) -> str:
+    """Return the organization ID as a digit string, or raise AuthenticationError."""
+    text = (
+        str(value) if isinstance(value, int) and not isinstance(value, bool) else value
+    )
+    if not isinstance(text, str) or not (text.isascii() and text.isdigit()):
+        raise AuthenticationError(
+            "Organization ID must be a non-empty numeric string or integer"
+        )
+    return text
 
 
 class AuthenticationHandler:
@@ -15,19 +25,25 @@ class AuthenticationHandler:
 
     def __init__(
         self,
-        organization_id: Optional[str] = None,
-        access_token: Optional[str] = None,
-        settings: Optional[ShopifyPartnersSDKSettings] = None,
+        organization_id: int | str | None = None,
+        access_token: str | None = None,
+        settings: ShopifyPartnersSDKSettings | None = None,
     ) -> None:
         """Initialize the authentication handler.
 
         Args:
-            organization_id: Shopify Partners organization ID
+            organization_id: Shopify Partners organization ID (int or digit string)
             access_token: Shopify Partners API access token
             settings: SDK settings instance
         """
         self._settings = settings or ShopifyPartnersSDKSettings()
-        self._organization_id = organization_id or self._settings.organization_id
+        if organization_id is None or organization_id == "":
+            organization_id = self._settings.organization_id
+        self._organization_id: str | None = (
+            None
+            if organization_id is None
+            else _normalize_organization_id(organization_id)
+        )
         self._access_token = access_token or self._settings.access_token
 
     @property
@@ -48,20 +64,16 @@ class AuthenticationHandler:
         return self._organization_id
 
     @organization_id.setter
-    def organization_id(self, value: str) -> None:
+    def organization_id(self, value: int | str) -> None:
         """Set the organization ID.
 
         Args:
-            value: The organization ID to set.
+            value: The organization ID to set, as an int or a digit string.
 
         Raises:
             AuthenticationError: If the organization ID format is invalid.
         """
-        if not value or not value.isdigit():
-            raise AuthenticationError(
-                "Organization ID must be a non-empty numeric string"
-            )
-        self._organization_id = value
+        self._organization_id = _normalize_organization_id(value)
 
     @property
     def access_token(self) -> str:
@@ -133,11 +145,7 @@ class AuthenticationHandler:
         Raises:
             AuthenticationError: If authentication credentials are not available.
         """
-        headers = {
-            "Content-Type": "application/json",
-            "Accept": "application/json",
-            "User-Agent": f"shopify-partners-sdk-python/{self._settings.api_version}",
-        }
+        headers = self._settings.get_headers()
         headers.update(self.get_auth_headers())
         return headers
 
@@ -145,7 +153,8 @@ class AuthenticationHandler:
         """Check if authentication credentials are available.
 
         Returns:
-            True if both organization ID and access token are available and valid.
+            True if both organization ID and access token are set.
+            This checks presence only, not format or validity.
         """
         try:
             _ = self.organization_id

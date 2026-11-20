@@ -1,12 +1,18 @@
 """App-related model objects for the Shopify Partners API."""
 
-from typing import TYPE_CHECKING, Optional
+from typing import Optional
 
 from pydantic import Field
 
-from shopify_partners_sdk.models.base import Connection, Edge, Node
+from shopify_partners_sdk.models.base import (
+    Connection,
+    Edge,
+    Node,
+    ShopifyPartnersBaseModel,
+)
 from shopify_partners_sdk.models.enums import AppEventType
-from shopify_partners_sdk.models.scalars import DateTime
+from shopify_partners_sdk.models.objects.shop import Shop  # noqa: TC001
+from shopify_partners_sdk.models.scalars import DateTime, Money
 
 
 class App(Node):
@@ -19,14 +25,16 @@ class App(Node):
         ..., description="Unique application API identifier", alias="apiKey"
     )
     name: str = Field(..., description="The name of the app")
-    events: "AppEventConnection" = Field(..., description="A list of app events")
+    events: Optional["AppEventConnection"] = Field(
+        None, description="App events; present only when selected"
+    )
 
     def __str__(self) -> str:
         """String representation showing app name."""
         return f"App(name='{self.name}', api_key='{self.api_key}')"
 
 
-class AppEvent(Node):
+class AppEvent(ShopifyPartnersBaseModel):
     """Base interface for app events.
 
     All app events implement this interface and include app, shop, and timing
@@ -42,7 +50,7 @@ class AppEvent(Node):
 
     def __str__(self) -> str:
         """String representation showing event type and timing."""
-        return f"{self.__class__.__name__}(type={self.type.value}, occurred_at={self.occurred_at})"
+        return f"{self.__class__.__name__}(type={self.type}, occurred_at={self.occurred_at})"
 
 
 class CreditApplied(AppEvent):
@@ -75,6 +83,11 @@ class RelationshipInstalled(AppEvent):
 
 class RelationshipUninstalled(AppEvent):
     """Event for when an app is uninstalled from a shop."""
+
+    reason: str | None = Field(None, description="Why the merchant uninstalled")
+    description: str | None = Field(
+        None, description="The merchant's own words about the uninstall"
+    )
 
 
 class RelationshipReactivated(AppEvent):
@@ -197,7 +210,6 @@ class AppEventConnection(Connection):
     """Connection for paginated app events."""
 
     edges: list[AppEventEdge] = Field(..., description="List of app event edges")
-    nodes: Optional[list[AppEvent]] = Field(None, description="List of app events")
 
     @property
     def events(self) -> list[AppEvent]:
@@ -210,13 +222,7 @@ class AppCredit(Node):
 
     amount: "Money" = Field(..., description="The credit amount")
     name: str = Field(..., description="The name of the credit")
-    description: Optional[str] = Field(None, description="Description of the credit")
-    created_at: DateTime = Field(
-        ..., description="When the credit was created", alias="createdAt"
-    )
     test: bool = Field(..., description="Whether this is a test credit")
-    app: App = Field(..., description="The app this credit belongs to")
-    shop: "Shop" = Field(..., description="The shop this credit applies to")
 
     def __str__(self) -> str:
         """String representation showing credit details."""
@@ -224,50 +230,27 @@ class AppCredit(Node):
 
 
 class AppCharge(Node):
-    """A one-time app charge."""
+    """Fields shared by every app charge (the AppCharge interface)."""
 
     amount: "Money" = Field(..., description="The charge amount")
     name: str = Field(..., description="The name of the charge")
-    status: str = Field(..., description="The status of the charge")
-    created_at: DateTime = Field(
-        ..., description="When the charge was created", alias="createdAt"
-    )
     test: bool = Field(..., description="Whether this is a test charge")
 
     def __str__(self) -> str:
         """String representation showing charge details."""
-        return f"AppCharge(amount={self.amount}, name='{self.name}', status='{self.status}')"
+        return f"{self.__class__.__name__}(amount={self.amount}, name='{self.name}')"
 
 
 class AppSubscriptionCharge(AppCharge):
     """A recurring subscription app charge."""
 
-    billing_on: Optional[DateTime] = Field(
+    billing_on: DateTime | None = Field(
         None, description="Next billing date", alias="billingOn"
     )
-    capped_amount: Optional["Money"] = Field(
-        None, description="Usage cap amount", alias="cappedAmount"
-    )
-    terms: Optional[str] = Field(None, description="Terms of the subscription")
-
-    def __str__(self) -> str:
-        """String representation showing subscription details."""
-        return f"AppSubscriptionCharge(amount={self.amount}, name='{self.name}', status='{self.status}')"
 
 
-class AppUsageCharge(Node):
-    """A usage-based app charge."""
-
-    amount: "Money" = Field(..., description="The usage charge amount")
-    name: str = Field(..., description="The name of the usage charge")
-    description: Optional[str] = Field(None, description="Description of the usage")
-    created_at: DateTime = Field(
-        ..., description="When the charge was created", alias="createdAt"
-    )
-
-    def __str__(self) -> str:
-        """String representation showing usage charge details."""
-        return f"AppUsageCharge(amount={self.amount}, name='{self.name}')"
+class AppUsageCharge(AppCharge):
+    """A usage-based app charge (AppUsageRecord in the schema)."""
 
 
 class AppSubscription(Node):
@@ -278,7 +261,7 @@ class AppSubscription(Node):
     test: bool = Field(
         ..., description="Whether the app purchase was a test transaction"
     )
-    billing_on: Optional[DateTime] = Field(
+    billing_on: DateTime | None = Field(
         None,
         description="The date when the merchant will next be billed",
         alias="billingOn",
@@ -301,9 +284,3 @@ class AppPurchaseOneTime(Node):
     def __str__(self) -> str:
         """String representation showing one-time purchase details."""
         return f"AppPurchaseOneTime(amount={self.amount}, name='{self.name}')"
-
-
-if TYPE_CHECKING:
-    from shopify_partners_sdk.models.scalars import Money
-
-    from .shop import Shop

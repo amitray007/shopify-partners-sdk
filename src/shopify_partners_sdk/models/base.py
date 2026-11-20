@@ -1,6 +1,6 @@
 """Base model classes for the Shopify Partners SDK."""
 
-from typing import Any, Optional, TypeVar
+from typing import Any, Self, TypeVar
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -46,7 +46,7 @@ class ShopifyPartnersBaseModel(BaseModel):
         )
 
     @classmethod
-    def from_graphql(cls: type[T], data: dict[str, Any]) -> T:
+    def from_graphql(cls, data: dict[str, Any]) -> Self:
         """Create model instance from GraphQL response data.
 
         Args:
@@ -81,7 +81,7 @@ class Actor(Node):
     Actors are entities that can perform actions (Users, Organizations).
     """
 
-    avatar_url: Optional[str] = Field(None, description="Avatar URL", alias="avatarUrl")
+    avatar_url: str | None = Field(None, description="Avatar URL", alias="avatarUrl")
     name: str = Field(..., description="Name of the actor")
 
     def __str__(self) -> str:
@@ -110,12 +110,12 @@ class Connection(ShopifyPartnersBaseModel):
         return self.page_info.has_previous_page
 
     @property
-    def start_cursor(self) -> Optional[str]:
+    def start_cursor(self) -> str | None:
         """Get the cursor for the first item."""
         return self.page_info.start_cursor
 
     @property
-    def end_cursor(self) -> Optional[str]:
+    def end_cursor(self) -> str | None:
         """Get the cursor for the last item."""
         return self.page_info.end_cursor
 
@@ -145,6 +145,12 @@ class PageInfo(ShopifyPartnersBaseModel):
     has_previous_page: bool = Field(
         ..., description="Whether there are previous pages", alias="hasPreviousPage"
     )
+    start_cursor: str | None = Field(
+        None, description="Cursor of the first edge", alias="startCursor"
+    )
+    end_cursor: str | None = Field(
+        None, description="Cursor of the last edge", alias="endCursor"
+    )
 
     def __str__(self) -> str:
         """String representation showing pagination state."""
@@ -162,7 +168,7 @@ class UserError(ShopifyPartnersBaseModel):
     User errors are validation errors that can be shown to users.
     """
 
-    field: Optional[str] = Field(None, description="Field that caused the error")
+    field: str | None = Field(None, description="Field that caused the error")
     message: str = Field(..., description="Error message")
 
     def __str__(self) -> str:

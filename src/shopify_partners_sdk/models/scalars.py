@@ -91,12 +91,12 @@ class GlobalID(str):
         if not isinstance(value, str):
             raise ValueError(f"GlobalID must be string, got {type(value)}")
 
-        if not value.startswith("gid://partners/"):
+        prefix = "gid://partners/"
+        if not value.startswith(prefix):
             raise ValueError(f"Invalid GlobalID format: {value}")
 
-        # Parse the GID structure
-        parts = value.split("/")
-        if len(parts) < 4:
+        object_type, _, object_id = value[len(prefix) :].partition("/")
+        if not object_type or not object_id:
             raise ValueError(f"Invalid GlobalID structure: {value}")
 
         return cls(value)
@@ -172,17 +172,14 @@ class Cursor(str):
         if not value:
             raise ValueError("Cursor cannot be empty")
 
-        # Try to decode as base64 to validate format
-        with suppress(Exception):
-            base64.b64decode(value, validate=True)
-
         return cls(value)
 
     def decode(self) -> dict[str, Any]:
         """Attempt to decode cursor if it's base64 encoded JSON."""
         with suppress(Exception):
             decoded_bytes = base64.b64decode(self, validate=True)
-            return json.loads(decoded_bytes.decode("utf-8"))
+            decoded: dict[str, Any] = json.loads(decoded_bytes.decode("utf-8"))
+            return decoded
         # Return original value if decoding fails
         return {"cursor": str(self)}
 

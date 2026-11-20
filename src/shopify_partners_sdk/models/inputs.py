@@ -1,6 +1,6 @@
 """Input types for GraphQL mutations and queries."""
 
-from typing import Optional
+from typing import Any
 
 from pydantic import ConfigDict, Field, field_validator
 
@@ -34,7 +34,7 @@ class AppCreditCreateInput(ShopifyPartnersBaseModel):
     shop_id: GlobalID = Field(..., description="The shop ID", alias="shopId")
     amount: MoneyInput = Field(..., description="Credit amount")
     description: str = Field(..., description="Credit description")
-    test: Optional[bool] = Field(None, description="Whether this is a test transaction")
+    test: bool | None = Field(None, description="Whether this is a test transaction")
 
     @field_validator("description")
     @classmethod
@@ -53,7 +53,7 @@ class EventsinkCreateInput(ShopifyPartnersBaseModel):
     app_id: GlobalID = Field(..., description="The app ID", alias="appId")
     topic: str = Field(..., description="Event topic")
     url: str = Field(..., description="Webhook URL")
-    queue: Optional[str] = Field(None, description="Queue type")
+    queue: str | None = Field(None, description="Queue type")
 
     @field_validator("url")
     @classmethod
@@ -79,20 +79,18 @@ class EventsinkDeleteInput(ShopifyPartnersBaseModel):
 class PaginationInput(ShopifyPartnersBaseModel):
     """Input for pagination parameters."""
 
-    first: Optional[int] = Field(
+    first: int | None = Field(
         None, ge=1, le=250, description="Returns the first n elements"
     )
-    after: Optional[str] = Field(None, description="Returns elements after this cursor")
-    last: Optional[int] = Field(
+    after: str | None = Field(None, description="Returns elements after this cursor")
+    last: int | None = Field(
         None, ge=1, le=250, description="Returns the last n elements"
     )
-    before: Optional[str] = Field(
-        None, description="Returns elements before this cursor"
-    )
+    before: str | None = Field(None, description="Returns elements before this cursor")
 
     @field_validator("first", "last")
     @classmethod
-    def validate_pagination_limit(cls, v: Optional[int]) -> Optional[int]:
+    def validate_pagination_limit(cls, v: int | None) -> int | None:
         """Validate pagination limits."""
         if v is not None and (v < 1 or v > 250):
             raise ValueError("Pagination limit must be between 1 and 250")
@@ -113,12 +111,12 @@ class PaginationInput(ShopifyPartnersBaseModel):
 class DateRangeInput(ShopifyPartnersBaseModel):
     """Input for date range filters."""
 
-    min_date: Optional[str] = Field(None, description="Minimum date (ISO-8601)")
-    max_date: Optional[str] = Field(None, description="Maximum date (ISO-8601)")
+    min_date: str | None = Field(None, description="Minimum date (ISO-8601)")
+    max_date: str | None = Field(None, description="Maximum date (ISO-8601)")
 
     @field_validator("min_date", "max_date")
     @classmethod
-    def validate_date_format(cls, v: Optional[str]) -> Optional[str]:
+    def validate_date_format(cls, v: str | None) -> str | None:
         """Validate ISO-8601 date format."""
         if v is not None:
             from datetime import datetime
@@ -143,6 +141,6 @@ class DateRangeInput(ShopifyPartnersBaseModel):
 class FilterInput(ShopifyPartnersBaseModel):
     """Base class for filter inputs."""
 
-    def model_dump_for_query(self) -> dict:
+    def model_dump_for_query(self) -> dict[str, Any]:
         """Dump model for use in GraphQL query variables."""
         return self.model_dump(exclude_none=True, by_alias=True)

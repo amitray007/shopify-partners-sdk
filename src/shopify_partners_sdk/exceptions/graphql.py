@@ -1,5 +1,6 @@
 """GraphQL-related exceptions for the Shopify Partners SDK."""
 
+from collections.abc import Iterator
 from typing import Any
 
 from .base import ShopifyPartnersSDKError
@@ -23,7 +24,7 @@ class GraphQLError(ShopifyPartnersSDKError):
             path: Path to the field that caused the error
             extensions: Additional error information
         """
-        details = {}
+        details: dict[str, Any] = {}
         if locations:
             details["locations"] = locations
         if path:
@@ -96,6 +97,6 @@ class GraphQLMultipleErrors(ShopifyPartnersSDKError):
         super().__init__(message, details)
         self.errors = errors
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[GraphQLError]:
         """Iterate over the errors."""
         return iter(self.errors)

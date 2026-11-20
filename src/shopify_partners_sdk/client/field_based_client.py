@@ -1,15 +1,19 @@
 """Field-based query and mutation client for the Shopify Partners API."""
 
+from collections.abc import Iterator
 import logging
 from typing import Any
 
+from shopify_partners_sdk.exceptions.validation import InvalidPageSizeError
 from shopify_partners_sdk.mutations.custom_builders import CustomMutationBuilder
 from shopify_partners_sdk.queries.custom_builders import (
     CustomConnectionQueryBuilder,
     CustomFilterableQueryBuilder,
     CustomQueryBuilder,
+    OperationBuilder,
 )
-from shopify_partners_sdk.queries.fields import FieldSelector
+from shopify_partners_sdk.queries.fields import FieldSelector, connection_fields
+from shopify_partners_sdk.schema import PartnerSchema, load_schema
 
 from .base import BaseGraphQLClient
 
@@ -17,174 +21,161 @@ logger = logging.getLogger(__name__)
 
 
 class FieldBasedShopifyPartnersClient:
-    """Field-based client interface for the Shopify Partners API.
+    """Builds field-based queries and mutations and runs them on a base client.
 
-    This client provides a field-based approach to building GraphQL queries
-    and mutations, allowing users to specify exactly what fields they want.
+    Every builder validates against the schema of the client's API version.
     """
 
-    def __init__(self, base_client: BaseGraphQLClient) -> None:
+    def __init__(
+        self, base_client: BaseGraphQLClient, schema: PartnerSchema | None = None
+    ) -> None:
         """Initialize the field-based client.
 
         Args:
             base_client: The base GraphQL client to use
+            schema: Schema to validate against (defaults to the client's API version)
         """
         self._client = base_client
+        self._schema = schema or load_schema(base_client.settings.api_version)
 
-    # Query building methods
+    @property
+    def schema(self) -> PartnerSchema:
+        """Schema the builders validate against."""
+        return self._schema
+
     def query(
-        self, query_name: str, fields: FieldSelector, **variables
+        self, query_name: str, fields: FieldSelector, **variables: Any
     ) -> CustomQueryBuilder:
-        """Create a custom query builder.
-
-        Args:
-            query_name: GraphQL query field name (e.g., 'app', 'publicApiVersions')
-            fields: Field selection for the query
-            **variables: Query variables
-
-        Returns:
-            Configured query builder
+        """Create a query builder for a top-level query field.
 
         Example:
-            >>> # Query API versions with custom fields
             >>> fields = FieldSelector().add_fields('handle', 'displayName')
-            >>> query = client.field_based.query('publicApiVersions', fields)
-            >>> result = client.execute_query_builder(query)
+            >>> builder = client.query('publicApiVersions', fields)
         """
-        builder = CustomQueryBuilder(query_name, fields)
+        builder = CustomQueryBuilder(query_name, fields, schema=self._schema)
         return builder.add_variables(**variables)
 
     def connection_query(
-        self, query_name: str, node_fields: FieldSelector, **variables
+        self, query_name: str, node_fields: FieldSelector, **variables: Any
     ) -> CustomConnectionQueryBuilder:
-        """Create a custom connection query builder for paginated results.
-
-        Args:
-            query_name: GraphQL query field name
-            node_fields: Field selection for the nodes
-            **variables: Query variables
-
-        Returns:
-            Configured connection query builder
+        """Create a builder that selects ``edges { cursor node { ... } }`` and pageInfo.
 
         Example:
-            >>> # Query apps with custom fields
-            >>> app_fields = FieldSelector().add_fields('id', 'title', 'handle')
-            >>> query = client.field_based.connection_query(
-            ...     'apps', app_fields, first=25
+            >>> builder = client.connection_query(
+            ...     'transactions', CommonFields.basic_transaction(), first=25
             ... )
-            >>> result = client.execute_query_builder(query)
         """
-        # Build connection structure with edges and pageInfo
-        connection_fields = FieldSelector()
-
-        # Add edges with cursor and node
-        edge_fields = FieldSelector(["cursor"]).add_nested_field("node", node_fields)
-        connection_fields.add_nested_field("edges", edge_fields)
-
-        # Add pageInfo
-        page_info_fields = FieldSelector(["hasNextPage", "hasPreviousPage"])
-        connection_fields.add_nested_field("pageInfo", page_info_fields)
-
-        builder = CustomConnectionQueryBuilder(query_name, connection_fields)
+        builder = CustomConnectionQueryBuilder(
+            query_name, connection_fields(node_fields), schema=self._schema
+        )
         return builder.add_variables(**variables)
 
     def filterable_query(
-        self, query_name: str, fields: FieldSelector, **variables
+        self, query_name: str, fields: FieldSelector, **variables: Any
     ) -> CustomFilterableQueryBuilder:
-        """Create a custom filterable query builder.
-
-        Args:
-            query_name: GraphQL query field name
-            fields: Field selection for the query
-            **variables: Query variables
-
-        Returns:
-            Configured filterable query builder
+        """Create a query builder with date, shop, and app filter helpers.
 
         Example:
-            >>> # Query transactions with date filtering
-            >>> fields = FieldSelector().add_fields('id', 'type', 'createdAt')
-            >>> query = client.field_based.filterable_query('transactions', fields)
-            >>> query = query.with_date_range('2024-01-01', '2024-12-31')
-            >>> result = client.execute_query_builder(query)
+            >>> builder = client.filterable_query('transactions', fields)
+            >>> builder = builder.with_date_range('2026-01-01', '2026-12-31')
         """
-        builder = CustomFilterableQueryBuilder(query_name, fields)
+        builder = CustomFilterableQueryBuilder(query_name, fields, schema=self._schema)
         return builder.add_variables(**variables)
 
-    # Mutation building methods
     def mutation(
-        self, mutation_name: str, result_fields: FieldSelector, **variables
+        self, mutation_name: str, result_fields: FieldSelector, **variables: Any
     ) -> CustomMutationBuilder:
-        """Create a custom mutation builder.
-
-        Args:
-            mutation_name: GraphQL mutation field name
-            result_fields: Field selection for the mutation result
-            **variables: Mutation variables
-
-        Returns:
-            Configured mutation builder
+        """Create a mutation builder for a top-level mutation field.
 
         Example:
-            >>> # Create app credit with custom result fields
-            >>> result_fields = (FieldSelector()
-            ...     .add_nested_field('appCredit', FieldSelector()
-            ...         .add_fields('id', 'description')
-            ...         .add_money_field('amount')))
-            >>> mutation = client.field_based.mutation('appCreditCreate', result_fields)
-            >>> mutation = mutation.with_input_variable(credit_input)
-            >>> result = client.execute_mutation_builder(mutation)
+            >>> result_fields = FieldSelector().add_nested_field(
+            ...     'userErrors', FieldSelector(['field', 'message']))
+            >>> builder = client.mutation(
+            ...     'appSubscriptionCancel', result_fields, appId='...', shopId='...',
+            ...     prorate=True, deferCancellation=False, skipFinalUsageCharge=False)
         """
-        builder = CustomMutationBuilder(mutation_name, result_fields)
+        builder = CustomMutationBuilder(
+            mutation_name, result_fields, schema=self._schema
+        )
         return builder.add_variables(**variables)
 
-    def execute_query_builder(self, builder: CustomQueryBuilder) -> dict[str, Any]:
-        """Execute a query builder and return the result.
+    def paginate(
+        self,
+        query_name: str,
+        node_fields: FieldSelector,
+        page_size: int | None = None,
+        max_pages: int | None = None,
+        **variables: Any,
+    ) -> Iterator[dict[str, Any]]:
+        """Yield every node of a connection query, fetching pages as needed.
 
         Args:
-            builder: The query builder to execute
+            query_name: Connection field, e.g. 'transactions' or 'events'
+            node_fields: Fields to select on each node
+            page_size: Nodes per request (defaults to settings.default_page_size)
+            max_pages: Stop after this many requests (None means no limit)
+            **variables: Other arguments, e.g. types=[...] or filter={...}
 
-        Returns:
-            GraphQL response data
+        Yields:
+            Each node's data, in API order
+        """
+        first = self._page_size(page_size)
+        reserved = {"first", "last", "before"} & variables.keys()
+        if reserved:
+            raise ValueError(
+                f"paginate() sets {', '.join(sorted(reserved))} itself; "
+                "use page_size and after instead"
+            )
+        cursor: str | None = variables.pop("after", None)
+        pages = 0
+        while max_pages is None or pages < max_pages:
+            builder = self.connection_query(
+                query_name, node_fields, first=first, after=cursor, **variables
+            )
+            connection = self.execute_query_builder(builder)[query_name]
+            pages += 1
+            edges = connection.get("edges") or []
+            for edge in edges:
+                yield edge["node"]
+            next_cursor = edges[-1]["cursor"] if edges else None
+            # Stop on a repeated cursor too, so a stuck hasNextPage cannot loop forever.
+            if not connection["pageInfo"]["hasNextPage"] or next_cursor in (
+                None,
+                cursor,
+            ):
+                return
+            cursor = next_cursor
+
+    def _page_size(self, page_size: int | None) -> int:
+        limit = self._client.settings.max_page_size
+        size = (
+            self._client.settings.default_page_size if page_size is None else page_size
+        )
+        if not 1 <= size <= limit:
+            raise InvalidPageSizeError(size, limit)
+        return size
+
+    def execute_query_builder(self, builder: OperationBuilder) -> dict[str, Any]:
+        """Execute a query builder and return the response ``data``.
 
         Raises:
             GraphQLError: If the query fails
         """
-        query = builder.build_query()
-        variables = builder.variables
+        return self._execute(builder)
 
-        logger.debug(
-            "Executing dynamic query",
-            query_name=builder.get_query_name(),
-            variables=list(variables.keys()),
-        )
-
-        response = self._client.execute_query(query, variables)
-        return response["data"]
-
-    def execute_mutation_builder(
-        self, builder: CustomMutationBuilder
-    ) -> dict[str, Any]:
-        """Execute a mutation builder and return the result.
-
-        Args:
-            builder: The mutation builder to execute
-
-        Returns:
-            GraphQL response data
+    def execute_mutation_builder(self, builder: OperationBuilder) -> dict[str, Any]:
+        """Execute a mutation builder and return the response ``data``.
 
         Raises:
             GraphQLError: If the mutation fails
         """
-        mutation = builder.build_mutation()
+        return self._execute(builder)
+
+    def _execute(self, builder: OperationBuilder) -> dict[str, Any]:
+        document = builder.build()
         variables = builder.variables
-
         logger.debug(
-            "Executing dynamic mutation",
-            mutation_name=builder.get_mutation_name(),
-            variables=list(variables.keys()),
+            "Executing %s with variables %s", builder.operation, list(variables)
         )
-
-        response = self._client.execute_query(mutation, variables)
-        return response["data"]
+        response = self._client.execute_query(document, variables)
+        return dict(response["data"])

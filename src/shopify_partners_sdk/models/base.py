@@ -1,8 +1,9 @@
 """Base model classes for the Shopify Partners SDK."""
 
-from typing import Any, Optional, TypeVar
+from collections.abc import Callable, Sequence
+from typing import Annotated, Any, Self, TypeVar, Union
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Discriminator, Field, Tag
 
 from .scalars import GlobalID
 
@@ -46,7 +47,7 @@ class ShopifyPartnersBaseModel(BaseModel):
         )
 
     @classmethod
-    def from_graphql(cls: type[T], data: dict[str, Any]) -> T:
+    def from_graphql(cls, data: dict[str, Any]) -> Self:
         """Create model instance from GraphQL response data.
 
         Args:
@@ -81,7 +82,7 @@ class Actor(Node):
     Actors are entities that can perform actions (Users, Organizations).
     """
 
-    avatar_url: Optional[str] = Field(None, description="Avatar URL", alias="avatarUrl")
+    avatar_url: str | None = Field(None, description="Avatar URL", alias="avatarUrl")
     name: str = Field(..., description="Name of the actor")
 
     def __str__(self) -> str:
@@ -110,12 +111,12 @@ class Connection(ShopifyPartnersBaseModel):
         return self.page_info.has_previous_page
 
     @property
-    def start_cursor(self) -> Optional[str]:
+    def start_cursor(self) -> str | None:
         """Get the cursor for the first item."""
         return self.page_info.start_cursor
 
     @property
-    def end_cursor(self) -> Optional[str]:
+    def end_cursor(self) -> str | None:
         """Get the cursor for the last item."""
         return self.page_info.end_cursor
 
@@ -145,6 +146,12 @@ class PageInfo(ShopifyPartnersBaseModel):
     has_previous_page: bool = Field(
         ..., description="Whether there are previous pages", alias="hasPreviousPage"
     )
+    start_cursor: str | None = Field(
+        None, description="Cursor of the first edge", alias="startCursor"
+    )
+    end_cursor: str | None = Field(
+        None, description="Cursor of the last edge", alias="endCursor"
+    )
 
     def __str__(self) -> str:
         """String representation showing pagination state."""
@@ -162,16 +169,44 @@ class UserError(ShopifyPartnersBaseModel):
     User errors are validation errors that can be shown to users.
     """
 
-    field: Optional[str] = Field(None, description="Field that caused the error")
+    field: list[str] | None = Field(
+        None, description="Path to the input field that caused the error"
+    )
     message: str = Field(..., description="Error message")
 
     def __str__(self) -> str:
         """String representation of the error."""
         if self.field:
-            return f"UserError(field='{self.field}', message='{self.message}')"
+            path = ".".join(self.field)
+            return f"UserError(field='{path}', message='{self.message}')"
         return f"UserError(message='{self.message}')"
 
 
 # Forward reference resolution
 PageInfo.model_rebuild()
 Connection.model_rebuild()
+
+
+def typename_union(
+    members: Sequence[type[BaseModel]],
+    fallback: type[BaseModel],
+    infer: Callable[[dict[str, Any]], str | None] = lambda _data: None,
+) -> Any:
+    """Union of models that parses each payload into the type GraphQL names.
+
+    The member is chosen by ``__typename``, then by ``infer``, then ``fallback``,
+    so a payload never silently parses as the wrong sibling type.
+    """
+    names = {model.__name__ for model in (*members, fallback)}
+
+    def pick(value: Any) -> str:
+        if isinstance(value, BaseModel):
+            return type(value).__name__
+        if isinstance(value, dict):
+            name = value.get("__typename") or infer(value)
+            if name in names:
+                return str(name)
+        return fallback.__name__
+
+    tagged = tuple(Annotated[m, Tag(m.__name__)] for m in (*members, fallback))
+    return Annotated[Union[tagged], Discriminator(pick)]  # noqa: UP007

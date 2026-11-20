@@ -69,3 +69,21 @@ class InvalidDateRangeError(ValidationError):
         super().__init__(message, details)
         self.start_date = start_date
         self.end_date = end_date
+
+
+class SchemaValidationError(ValidationError, ValueError):
+    """Raised when a query or mutation does not match the Partner API schema.
+
+    Subclasses ValueError so callers that caught the builders' earlier ValueErrors
+    keep working.
+    """
+
+    def __init__(self, message: str, suggestions: list[str] | None = None) -> None:
+        """Initialize the schema validation error.
+
+        Args:
+            message: Error message, including any suggestion text
+            suggestions: Close matches for the invalid name, best first
+        """
+        super().__init__(message)
+        self.suggestions = suggestions or []

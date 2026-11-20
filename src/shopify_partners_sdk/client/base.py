@@ -3,7 +3,8 @@
 from contextlib import suppress
 import json
 import logging
-from typing import Any, Optional
+import re
+from typing import Any, Self
 
 import requests
 
@@ -18,8 +19,17 @@ from shopify_partners_sdk.exceptions.graphql import (
     GraphQLResponseError,
 )
 from shopify_partners_sdk.exceptions.rate_limit import RateLimitServerError
+from shopify_partners_sdk.values import to_json_value
 
 logger = logging.getLogger(__name__)
+
+# A mutation definition opens the document or follows another definition's "}".
+_MUTATION_DEFINITION = re.compile(r"(?:\A|\})(?:[\s,]|#[^\n]*)*mutation\b")
+
+
+def is_mutation(document: str) -> bool:
+    """True when a GraphQL document defines a mutation operation."""
+    return _MUTATION_DEFINITION.search(document) is not None
 
 
 class BaseGraphQLClient:
@@ -30,10 +40,10 @@ class BaseGraphQLClient:
 
     def __init__(
         self,
-        organization_id: Optional[str] = None,
-        access_token: Optional[str] = None,
-        settings: Optional[ShopifyPartnersSDKSettings] = None,
-        http_client: Optional[requests.Session] = None,
+        organization_id: int | str | None = None,
+        access_token: str | None = None,
+        settings: ShopifyPartnersSDKSettings | None = None,
+        http_client: requests.Session | None = None,
     ) -> None:
         """Initialize the GraphQL client.
 
@@ -101,8 +111,8 @@ class BaseGraphQLClient:
     def execute_query(
         self,
         query: str,
-        variables: Optional[dict[str, Any]] = None,
-        operation_name: Optional[str] = None,
+        variables: dict[str, Any] | None = None,
+        operation_name: str | None = None,
     ) -> dict[str, Any]:
         """Execute a GraphQL query.
 
@@ -124,9 +134,9 @@ class BaseGraphQLClient:
         self._auth.validate_credentials()
 
         # Prepare request
-        payload = {"query": query}
+        payload: dict[str, Any] = {"query": query}
         if variables:
-            payload["variables"] = variables
+            payload["variables"] = to_json_value(variables)
         if operation_name:
             payload["operationName"] = operation_name
 
@@ -134,6 +144,7 @@ class BaseGraphQLClient:
         response_data = self._retry_handler.execute_with_retry(
             self._execute_request_with_rate_limiting,
             payload,
+            idempotent=not is_mutation(query),
         )
 
         # Process GraphQL response
@@ -176,11 +187,11 @@ class BaseGraphQLClient:
 
         self._request_count += 1
 
-        logger.info(
-            "Executing GraphQL request",
-            endpoint=endpoint,
-            operation=payload.get("operationName"),
-            variables_count=len(payload.get("variables", {})),
+        logger.debug(
+            "Executing GraphQL request to %s (operation=%s, variables=%d)",
+            endpoint,
+            payload.get("operationName"),
+            len(payload.get("variables", {})),
         )
 
         try:
@@ -213,7 +224,8 @@ class BaseGraphQLClient:
 
             # Parse JSON response
             try:
-                return response.json()
+                body: dict[str, Any] = response.json()
+                return body
             except json.JSONDecodeError as e:
                 self._error_count += 1
                 raise GraphQLResponseError(
@@ -223,11 +235,7 @@ class BaseGraphQLClient:
 
         except requests.HTTPError as e:
             self._error_count += 1
-            logger.warning(
-                "HTTP request failed",
-                error=str(e),
-                endpoint=endpoint,
-            )
+            logger.warning("HTTP request to %s failed: %s", endpoint, e)
             raise
 
     def _process_graphql_response(
@@ -287,19 +295,15 @@ class BaseGraphQLClient:
                 response_data=response_data,
             )
 
-        logger.info(
-            "GraphQL request successful",
-            has_data=response_data.get("data") is not None,
-            has_extensions=response_data.get("extensions") is not None,
-        )
+        logger.debug("GraphQL request succeeded")
 
         return response_data
 
     def execute_mutation(
         self,
         mutation: str,
-        variables: Optional[dict[str, Any]] = None,
-        operation_name: Optional[str] = None,
+        variables: dict[str, Any] | None = None,
+        operation_name: str | None = None,
     ) -> dict[str, Any]:
         """Execute a GraphQL mutation.
 
@@ -336,11 +340,11 @@ class BaseGraphQLClient:
         if self._owns_http_client:
             self._http_client.close()
 
-    def __enter__(self):
+    def __enter__(self) -> Self:
         """Context manager entry."""
         return self
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
+    def __exit__(self, *exc_info: object) -> None:
         """Context manager exit."""
         self.close()
 

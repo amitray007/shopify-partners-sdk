@@ -1,6 +1,6 @@
 """Core query result container for GraphQL queries."""
 
-from typing import Any, Optional
+from typing import Any
 
 
 class QueryResult:
@@ -27,7 +27,7 @@ class QueryResult:
         self.raw_response = raw_response
 
     @property
-    def extensions(self) -> Optional[dict[str, Any]]:
+    def extensions(self) -> dict[str, Any] | None:
         """Get extensions from GraphQL response."""
         return self.raw_response.get("extensions")
 

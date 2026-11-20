@@ -1,130 +1,60 @@
-# Shopify Partners API - GraphQL Schema Documentation
+# Shopify Partners API - GraphQL Schema Data
 
-This directory contains comprehensive GraphQL schema analysis for the Shopify Partners API, including introspection data, analysis utilities, and generated documentation.
+This directory holds the raw introspection data for each Partners API version, the script that compiles it into the schema the SDK bundles, and older analysis tools.
 
-## Directory Structure
+## Directory structure
 
 ```
 schema/
-├── README.md                    # This file
-├── utils/                       # Python analysis utilities
-│   ├── README.md               # Utils documentation
-│   ├── analyze_schema.py       # Original schema analysis script
+├── README.md
+├── utils/
+│   ├── build_sdk_schema.py          # Compiles raw files into the SDK's bundled schema
+│   ├── analyze_schema.py            # Analysis scripts (see utils/README.md)
 │   ├── analyze_complete_schema.py
 │   ├── build_detailed_queries.py
 │   └── compare_schema_versions.py
-├── analysis/                    # Generated analysis results
-│   ├── README.md               # Analysis files documentation
-│   ├── complete_field_structures.txt
-│   ├── detailed_query_examples.md
-│   ├── version_comparison.md
-│   ├── schema_summary.txt
-│   └── evolution_summary.txt
-└── versions/                    # Schema version data
-    ├── 2024-10/
-    │   └── introspection.json
-    ├── 2025-01/
-    │   └── introspection.json
-    ├── 2025-04/
-    │   └── introspection.json
-    ├── 2025-07/
-    │   └── introspection.json
+├── analysis/                        # Generated analysis output (2024-10 to unstable)
+└── versions/
+    ├── 2024-10/ 2025-01/ 2025-04/ 2025-07/   # Retired. Kept for history. Not bundled.
+    ├── 2026-01/ 2026-04/ 2026-07/            # Supported
+    ├── 2026-10/                              # Default
+    ├── 2027-01/                              # Release candidate
     └── unstable/
-        └── introspection.json
+        └── introspection.json               # One raw file per version directory
 ```
 
-## Quick Start
+## Supported versions
 
-To generate fresh analysis from the schema files:
+The SDK bundles 2026-01, 2026-04, 2026-07, 2026-10, 2027-01, and unstable. The default is 2026-10. The SDK rejects every other version.
+
+| Version | Queries | Mutations |
+|---------|---------|-----------|
+| 2026-01, 2026-04 | `app`, `publicApiVersions`, `transaction`, `transactions` | `appCreditCreate` |
+| 2026-07, 2026-10, 2027-01 | the above, plus `activeSubscription` and `events` | plus `appSubscriptionCancel` |
+| unstable | the above, plus `appSubscriptionMigrationOperation`, `eventsinks`, `migratableAppSubscriptions`, `migratableAppSubscriptionsCount` | plus `appSubscriptionMigrationOperationCancel`, `appSubscriptionMigrationOperationCreate`, `eventsinkCreate`, `eventsinkDelete` |
+
+Since 2026-01, `conversation`, `conversations`, `job`, and `jobs` do not exist. `App` has `id`, `name`, `apiKey`, and `events`. `Transaction` is an interface with `id` and `createdAt`.
+
+## Provenance
+
+The raw files for 2026-01 to unstable come from the data that ships in Shopify's `@shopify/dev-mcp` 1.19.0 npm package. That package carries the official Partners API introspection result for each version. The origin of the 2024-10 to 2025-07 files is not recorded.
+
+## Build the bundled schema
+
+The SDK does not read the raw files at runtime. It loads compact files from `src/shopify_partners_sdk/schema/data/partner_<version>.json`. Generate them from the repository root:
 
 ```bash
-# Run all analysis utilities
-cd schema/utils
-python analyze_schema.py              # Original analysis script
-python analyze_complete_schema.py     # Comprehensive analysis
-python build_detailed_queries.py      # Detailed query examples
-python compare_schema_versions.py     # Version comparison
+python schema/utils/build_sdk_schema.py            # all supported versions
+python schema/utils/build_sdk_schema.py 2026-10    # selected versions
 ```
 
-This will regenerate all files in the `analysis/` directory.
+The script reads `schema/versions/<version>/introspection.json` and keeps what the SDK needs to type variables and validate selections. It lists the versions to build in `SUPPORTED_VERSIONS`. `tests/unit/test_schema.py` fails when a bundled file differs from its raw file. To add a version, follow "Add a new API version" in [CONTRIBUTING.md](../CONTRIBUTING.md).
 
-## API Overview
+## Capture a new introspection file
 
-### Current API (Unstable Version)
-- **9 Queries:** app, conversation†, conversations†, eventsinks*, job†, jobs†, publicApiVersions, transaction, transactions
-- **3 Mutations:** appCreditCreate, eventsinkCreate*, eventsinkDelete*
-- **109 Types** including interfaces, objects, enums, and input types
-
-*New in unstable version
-†Deprecated as of 2024-01
-
-### Key Features
-- **Transaction Interface:** Polymorphic transaction types (AppOneTimeSale, ServiceSale, ThemeSale, etc.)
-- **Connection Patterns:** Standardized GraphQL pagination
-- **Event System:** App events with comprehensive filtering
-- **Eventsink Integration:** Webhook management (unstable)
-
-## Documentation
-
-The complete API documentation is available in:
-- **`../docs/shopify/queries.md`** - Primary documentation with complete examples
-- **`analysis/detailed_query_examples.md`** - Raw generated examples
-- **`analysis/complete_field_structures.txt`** - Technical field analysis
-
-## Schema Versions
-
-| Version | Queries | Mutations | Notes |
-|---------|---------|-----------|-------|
-| 2024-10 | 8 | 1 | Stable release |
-| 2025-01 | 8 | 1 | No changes |
-| 2025-04 | 8 | 1 | No changes |
-| 2025-07 | 8 | 1 | No changes |
-| unstable | 9 | 3 | Added eventsink functionality, enhanced transaction types |
-
-### Major Changes in Unstable
-- **New Eventsink Features:**
-  - `eventsinks` query for webhook management
-  - `eventsinkCreate` and `eventsinkDelete` mutations
-  - Support for CUSTOMER_EVENTS_CREATE, CUSTOMERS_REDACT, DELIVERY_PROMISES_CREATE topics
-
-- **Enhanced Transaction Types:**
-  - Added `processingFee` and `regulatoryOperatingFee` fields to all sale types
-  - Added `taxType` field to TaxTransaction
-  - Affects: AppOneTimeSale, AppSaleAdjustment, AppSaleCredit, AppSubscriptionSale, AppUsageSale, ServiceSale, ServiceSaleAdjustment, ThemeSale, ThemeSaleAdjustment
-
-## Interface Implementations
-
-### Transaction Interface
-The Transaction interface has 13 implementations:
-- **App Transactions:** AppOneTimeSale, AppSaleAdjustment, AppSaleCredit, AppSubscriptionSale, AppUsageSale
-- **Service Transactions:** ServiceSale, ServiceSaleAdjustment
-- **Theme Transactions:** ThemeSale, ThemeSaleAdjustment
-- **Other:** TaxTransaction, ReferralTransaction, ReferralAdjustment, LegacyTransaction
-
-### Usage Example
-```graphql
-query TransactionQuery($id: ID!) {
-  transaction(id: $id) {
-    id
-    createdAt
-    ... on AppOneTimeSale {
-      chargeId
-      grossAmount { amount currencyCode }
-      netAmount { amount currencyCode }
-      processingFee { amount currencyCode }
-      app { id name }
-    }
-    # ... other implementations
-  }
-}
-```
-
-## How to Get Schema for Specific Versions
-
-1. Create a Partners API Client Token in the Partners Dashboard
-2. Visit the Partners GraphiQL Explorer
-3. Capture the network request to `https://partners.shopify.com/{organization_id}/api/{version}/graphql`
-4. Use the introspection query below:
+1. Create a Partners API client token in the Partner Dashboard.
+2. Send the query below to `https://partners.shopify.com/{organization_id}/api/{version}/graphql` with the `X-Shopify-Access-Token` header.
+3. Save the response as `schema/versions/<version>/introspection.json`.
 
 ```json
 {
@@ -133,10 +63,14 @@ query TransactionQuery($id: ID!) {
 }
 ```
 
-## Integration
+## Analysis scripts
 
-This schema analysis powers:
-- **SDK Development:** Complete type definitions and operation signatures
-- **Documentation Generation:** Automated API documentation
-- **Testing:** Comprehensive coverage of all fields and operations
-- **Version Migration:** Understanding of breaking changes and new features
+The scripts in `utils/` write reports to `analysis/`. They cover the 2024-10 to unstable files and predate the 2026 versions. See [utils/README.md](utils/README.md).
+
+```bash
+cd schema/utils
+python analyze_schema.py
+python analyze_complete_schema.py
+python build_detailed_queries.py
+python compare_schema_versions.py
+```

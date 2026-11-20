@@ -1,8 +1,12 @@
 """Configuration settings for the Shopify Partners SDK using Pydantic."""
 
-from typing import Optional
+from typing import Self
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import Field, field_validator, model_validator
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
+from shopify_partners_sdk.schema import SUPPORTED_API_VERSIONS
+from shopify_partners_sdk.version import __version__
 
 from .defaults import (
     DEFAULT_API_VERSION,
@@ -18,23 +22,26 @@ from .defaults import (
     DEFAULT_RETRY_BASE_DELAY,
     DEFAULT_RETRY_MAX_DELAY,
     DEFAULT_TIMEOUT_SECONDS,
+    USER_AGENT,
 )
 
 
-class ShopifyPartnersSDKSettings(BaseModel):
+class ShopifyPartnersSDKSettings(BaseSettings):
     """Configuration settings for the Shopify Partners SDK.
 
     Settings can be configured via environment variables with the prefix
     SHOPIFY_PARTNERS_.
-    For example: SHOPIFY_PARTNERS_API_VERSION=2025-04
+    For example: SHOPIFY_PARTNERS_API_VERSION=2026-10. Values passed to the
+    constructor take precedence over the environment and a local ``.env`` file.
     """
 
-    class Config:
-        env_prefix = "SHOPIFY_PARTNERS_"
-        env_file = ".env"
-        env_file_encoding = "utf-8"
-        case_sensitive = False
-        extra = "ignore"
+    model_config = SettingsConfigDict(
+        env_prefix="SHOPIFY_PARTNERS_",
+        env_file=".env",
+        env_file_encoding="utf-8",
+        case_sensitive=False,
+        extra="ignore",
+    )
 
     # API Configuration
     api_version: str = Field(
@@ -47,11 +54,11 @@ class ShopifyPartnersSDKSettings(BaseModel):
     )
 
     # Authentication (typically set programmatically, not via env vars)
-    organization_id: Optional[int] = Field(
+    organization_id: int | None = Field(
         default=None,
         description="Shopify Partners organization ID",
     )
-    access_token: Optional[str] = Field(
+    access_token: str | None = Field(
         default=None,
         description="Shopify Partners API access token",
     )
@@ -131,23 +138,24 @@ class ShopifyPartnersSDKSettings(BaseModel):
     @field_validator("api_version")
     @classmethod
     def validate_api_version(cls, v: str) -> str:
-        """Validate API version format."""
-        valid_versions = {"2024-10", "2025-01", "2025-04", "2025-07", "unstable"}
-        if v not in valid_versions:
-            raise ValueError(f"api_version must be one of: {valid_versions}")
+        """Accept only versions Shopify supports and the SDK bundles a schema for."""
+        if v not in SUPPORTED_API_VERSIONS:
+            raise ValueError(
+                f"api_version must be one of: {', '.join(SUPPORTED_API_VERSIONS)}"
+            )
         return v
 
     @field_validator("organization_id")
     @classmethod
-    def validate_organization_id(cls, v: Optional[int]) -> Optional[int]:
+    def validate_organization_id(cls, v: int | None) -> int | None:
         """Validate organization ID format."""
-        if isinstance(v, int):
-            return v
-        raise ValueError("organization_id must be a numeric integer")
+        if v is not None and v <= 0:
+            raise ValueError("organization_id must be a positive integer")
+        return v
 
     @field_validator("access_token")
     @classmethod
-    def validate_access_token(cls, v: Optional[str]) -> Optional[str]:
+    def validate_access_token(cls, v: str | None) -> str | None:
         """Validate access token format."""
         if v is not None and not v.startswith("prtapi_"):
             raise ValueError("access_token must start with 'prtapi_'")
@@ -163,23 +171,14 @@ class ShopifyPartnersSDKSettings(BaseModel):
             raise ValueError(f"log_level must be one of: {valid_levels}")
         return v_upper
 
-    @field_validator("max_keepalive_connections")
-    @classmethod
-    def validate_keepalive_connections(cls, v: int, values: dict) -> int:
-        """Ensure keepalive connections don't exceed max connections."""
-        max_connections = values.get("max_connections", DEFAULT_MAX_CONNECTIONS)
-        if v > max_connections:
+    @model_validator(mode="after")
+    def validate_limits(self) -> Self:
+        """Check limits that depend on each other."""
+        if self.max_keepalive_connections > self.max_connections:
             raise ValueError("max_keepalive_connections cannot exceed max_connections")
-        return v
-
-    @field_validator("default_page_size")
-    @classmethod
-    def validate_default_page_size(cls, v: int, values: dict) -> int:
-        """Ensure default page size doesn't exceed max page size."""
-        max_page_size = values.get("max_page_size", DEFAULT_MAX_PAGE_SIZE)
-        if v > max_page_size:
+        if self.default_page_size > self.max_page_size:
             raise ValueError("default_page_size cannot exceed max_page_size")
-        return v
+        return self
 
     def get_api_endpoint(self) -> str:
         """Get the full GraphQL API endpoint URL."""
@@ -193,7 +192,7 @@ class ShopifyPartnersSDKSettings(BaseModel):
         headers = {
             "Content-Type": "application/json",
             "Accept": "application/json",
-            "User-Agent": f"shopify-partners-sdk-python/{self.api_version}",
+            "User-Agent": f"{USER_AGENT}/{__version__}",
         }
 
         if self.access_token:

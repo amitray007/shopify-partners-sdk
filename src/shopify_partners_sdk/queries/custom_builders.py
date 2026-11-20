@@ -1,379 +1,237 @@
 """Custom GraphQL query builders with field selection."""
 
-from typing import Any, Optional
+from typing import Any, ClassVar, Self
 
-from shopify_partners_sdk.models.enums import AppEventType, TransactionType
+from shopify_partners_sdk.config.defaults import DEFAULT_API_VERSION
+from shopify_partners_sdk.exceptions.validation import SchemaValidationError
+from shopify_partners_sdk.schema import (
+    Operation,
+    PartnerSchema,
+    load_schema,
+    named_type,
+)
 
-from .fields import FieldSelector
+from .fields import FieldSelector, connection_fields
 
 
-class CustomQueryBuilder:
-    """Custom query builder for any GraphQL query with field selection."""
+class OperationBuilder:
+    """Builds one top-level query or mutation field, typed by the Partner API schema.
+
+    Variable types come from the schema, so ``$types: [TransactionType!]`` and
+    ``$amount: MoneyInput!`` are declared exactly as the API expects. Unknown root
+    fields, arguments, and selected fields raise SchemaValidationError with
+    suggestions before any request is sent.
+    """
+
+    operation: ClassVar[Operation] = "query"
 
     def __init__(
         self,
-        query_name: str,
-        fields: Optional[FieldSelector] = None,
-        operation_name: Optional[str] = None,
+        root_field: str,
+        fields: FieldSelector | None = None,
+        operation_name: str | None = None,
+        schema: PartnerSchema | None = None,
     ) -> None:
-        """Initialize custom query builder.
+        """Initialize the builder.
 
         Args:
-            query_name: The root query field name (e.g., 'apps', 'transactions')
-            fields: Field selector for the query
+            root_field: Top-level field name (e.g. 'transactions', 'appCreditCreate')
+            fields: Field selector for the result
             operation_name: Optional GraphQL operation name
+            schema: Schema to validate against (defaults to the default API version)
+
+        Raises:
+            SchemaValidationError: If ``root_field`` does not exist
         """
-        self._query_name = query_name
+        self._schema = schema or load_schema(DEFAULT_API_VERSION)
+        self._root_type = self._schema.root_type(self.operation)
+        self._schema.root_field(self.operation, root_field)
+        self._root_field = root_field
         self._fields = fields
         self._operation_name = operation_name
         self._variables: dict[str, Any] = {}
-        self._fragments: list[str] = []
+
+    @property
+    def schema(self) -> PartnerSchema:
+        """Schema this builder validates against."""
+        return self._schema
 
     @property
     def variables(self) -> dict[str, Any]:
-        """Get the current query variables."""
+        """Get the current variables."""
         return self._variables.copy()
 
-    def add_variable(self, name: str, value: Any) -> "CustomQueryBuilder":
-        """Add a variable to the query.
+    def add_variable(self, name: str, value: Any) -> Self:
+        """Pass an argument to the root field as a variable. ``None`` is skipped.
 
-        Args:
-            name: Variable name (without $ prefix)
-            value: Variable value
-
-        Returns:
-            Self for method chaining
+        Raises:
+            SchemaValidationError: If the root field has no such argument
         """
         if value is not None:
+            self._schema.argument_type(self._root_type, self._root_field, name)
             self._variables[name] = value
         return self
 
-    def add_variables(self, **variables: Any) -> "CustomQueryBuilder":
-        """Add multiple variables to the query.
-
-        Args:
-            **variables: Variables to add
-
-        Returns:
-            Self for method chaining
-        """
+    def add_variables(self, **variables: Any) -> Self:
+        """Add several variables; see add_variable()."""
         for name, value in variables.items():
-            if value is not None:
-                self._variables[name] = value
+            self.add_variable(name, value)
         return self
 
-    def with_fields(self, fields: FieldSelector) -> "CustomQueryBuilder":
-        """Set the fields to select in the query.
-
-        Args:
-            fields: Field selector
-
-        Returns:
-            Self for method chaining
-        """
+    def with_fields(self, fields: FieldSelector) -> Self:
+        """Set the fields to select on the result."""
         self._fields = fields
         return self
 
-    def with_operation_name(self, name: str) -> "CustomQueryBuilder":
-        """Set the operation name for the query.
-
-        Args:
-            name: Operation name
-
-        Returns:
-            Self for method chaining
-        """
+    def with_operation_name(self, name: str) -> Self:
+        """Set the GraphQL operation name."""
         self._operation_name = name
         return self
 
+    def default_fields(self) -> FieldSelector | None:
+        """Selection used when none is given."""
+        return None
+
+    def build(self) -> str:
+        """Build the GraphQL document.
+
+        Raises:
+            SchemaValidationError: If a required argument is missing or the selection
+                does not match the schema
+        """
+        self._check_required_variables()
+        header = f"{self.operation}{self._render_operation_name()}"
+        header += self._render_variable_definitions()
+        call = f"{self._root_field}{self._render_arguments()}"
+        selection = self._render_selection()
+        if selection:
+            return f"{header} {{\n  {call} {{\n{selection}\n  }}\n}}"
+        return f"{header} {{\n  {call}\n}}"
+
+    def get_result_type(self) -> type:
+        """Get the expected result type (always dict)."""
+        return dict
+
+    def _render_operation_name(self) -> str:
+        return f" {self._operation_name}" if self._operation_name else ""
+
+    def _render_variable_definitions(self) -> str:
+        if not self._variables:
+            return ""
+        definitions = [
+            f"${name}: {self._schema.argument_type(self._root_type, self._root_field, name)}"
+            for name in self._variables
+        ]
+        return f"({', '.join(definitions)})"
+
+    def _render_arguments(self) -> str:
+        if not self._variables:
+            return ""
+        return f"({', '.join(f'{name}: ${name}' for name in self._variables)})"
+
+    def _render_selection(self) -> str:
+        return_type = named_type(
+            self._schema.root_field(self.operation, self._root_field)["type"]
+        )
+        fields = self._fields or self.default_fields()
+        if self._schema.is_leaf(return_type):
+            if fields:
+                raise SchemaValidationError(
+                    f"'{self._root_field}' returns {return_type}, which takes no "
+                    "sub-selection."
+                )
+            return ""
+        if not fields:
+            raise SchemaValidationError(
+                f"Select at least one field of {return_type} for '{self._root_field}'."
+            )
+        return fields.build(2, self._schema, return_type)
+
+    def _check_required_variables(self) -> None:
+        required = self._schema.required_arguments(self._root_type, self._root_field)
+        missing = [name for name in required if name not in self._variables]
+        if missing:
+            raise SchemaValidationError(
+                f"'{self._root_field}' requires argument(s): {', '.join(missing)}."
+            )
+
+
+class CustomQueryBuilder(OperationBuilder):
+    """Custom query builder for any top-level Partner API query."""
+
     def get_query_name(self) -> str:
         """Get the root query field name."""
-        return self._query_name
+        return self._root_field
 
     def build_query(self) -> str:
         """Build the complete GraphQL query string."""
-        # Build variable definitions
-        variable_defs = self._build_variable_definitions()
-
-        # Build operation name
-        operation_name = f" {self._operation_name}" if self._operation_name else ""
-
-        # Build field selection
-        field_selection = ""
-        if self._fields:
-            field_selection = self._fields.build(2)
-        else:
-            field_selection = "  # No fields specified"
-
-        # Build query arguments
-        query_args = ""
-        if self._variables:
-            args = [f"{name}: ${name}" for name in self._variables]
-            query_args = f"({', '.join(args)})"
-
-        # Build fragments
-        fragments = "\n".join(self._fragments) if self._fragments else ""
-
-        return f"""
-query{operation_name}{variable_defs} {{
-  {self._query_name}{query_args} {{
-{field_selection}
-  }}
-}}
-{fragments}
-        """.strip()
-
-    def _build_variable_definitions(self) -> str:
-        """Build GraphQL variable definitions from current variables."""
-        if not self._variables:
-            return ""
-
-        definitions = []
-        for name, value in self._variables.items():
-            var_type = self._infer_variable_type(value, name)
-            definitions.append(f"${name}: {var_type}")
-
-        return "(" + ", ".join(definitions) + ")"
-
-    def _infer_variable_type(self, value: Any, variable_name: str = "") -> str:
-        """Infer GraphQL variable type from Python value."""
-        if value is None:
-            return "String"
-        if isinstance(value, bool):
-            return "Boolean"
-        if isinstance(value, int):
-            return "Int"
-        if isinstance(value, float):
-            return "Float"
-        if isinstance(value, str):
-            # Use ID! for fields named "id" or ending with "Id"
-            if variable_name == "id" or variable_name.endswith("Id"):
-                return "ID!"
-            if variable_name == "createdAtMin" or variable_name == "createdAtMax":
-                return "DateTime"
-            return "String"
-        if isinstance(value, list):
-            if value:
-                item_type = self._infer_variable_type(value[0], variable_name)
-                return f"[{item_type}]"
-            return "[String]"
-        if isinstance(value, AppEventType):
-            return "AppEventType"
-        if isinstance(value, TransactionType):
-            return "TransactionType"
-        # Handle pagination and date range inputs as generic objects
-        if hasattr(value, "first") or hasattr(value, "last"):
-            return "PaginationInput"
-        if hasattr(value, "min_date") or hasattr(value, "max_date"):
-            return "DateRangeInput"
-        return "String"
-
-    def get_result_type(self) -> type:
-        """Get the expected result type (returns dict for custom queries)."""
-        return dict
+        return self.build()
 
 
 class CustomConnectionQueryBuilder(CustomQueryBuilder):
     """Custom connection query builder for paginated GraphQL queries."""
 
-    def __init__(
-        self,
-        query_name: str,
-        fields: Optional[FieldSelector] = None,
-        operation_name: Optional[str] = None,
-    ) -> None:
-        """Initialize custom connection query builder.
-
-        Args:
-            query_name: The root query field name
-            fields: Field selector for the query
-            operation_name: Optional GraphQL operation name
-        """
-        super().__init__(query_name, fields, operation_name)
-        self._pagination: Optional[dict] = None
-
     def paginate(
         self,
-        first: Optional[int] = None,
-        after: Optional[str] = None,
-        last: Optional[int] = None,
-        before: Optional[str] = None,
-    ) -> "CustomConnectionQueryBuilder":
-        """Add pagination parameters.
+        first: int | None = None,
+        after: str | None = None,
+        last: int | None = None,
+        before: str | None = None,
+    ) -> Self:
+        """Add pagination arguments.
 
-        Args:
-            first: Return first N items
-            after: Return items after this cursor
-            last: Return last N items
-            before: Return items before this cursor
-
-        Returns:
-            Self for method chaining
+        Raises:
+            ValueError: If both first and last, or both after and before, are given
         """
-        pagination = {
-            "first": first,
-            "after": after,
-            "last": last,
-            "before": before,
-        }
-
-        # Basic validation for pagination parameters
-        if pagination["first"] and pagination["last"]:
+        if first is not None and last is not None:
             raise ValueError("Cannot specify both 'first' and 'last' parameters")
-        if pagination["after"] and pagination["before"]:
+        if after is not None and before is not None:
             raise ValueError("Cannot specify both 'after' and 'before' parameters")
+        self.add_variables(first=first, after=after, last=last, before=before)
+        return self
 
-        self._pagination = pagination
-        # Filter out None values and add as variables
-        filtered_pagination = {k: v for k, v in pagination.items() if v is not None}
-        return self.add_variables(**filtered_pagination)
-
-    def with_page_size(self, size: int) -> "CustomConnectionQueryBuilder":
-        """Set page size for forward pagination.
-
-        Args:
-            size: Number of items per page
-
-        Returns:
-            Self for method chaining
-        """
+    def with_page_size(self, size: int) -> Self:
+        """Set page size for forward pagination."""
         return self.paginate(first=size)
 
-    def with_cursor(
-        self, cursor: str, forward: bool = True
-    ) -> "CustomConnectionQueryBuilder":
-        """Continue pagination from a cursor.
+    def with_cursor(self, cursor: str, forward: bool = True) -> Self:
+        """Continue pagination after (forward) or before (backward) a cursor."""
+        self.add_variable("after" if forward else "before", cursor)
+        return self
 
-        Args:
-            cursor: Cursor to start from
-            forward: Whether to paginate forward (True) or backward (False)
-
-        Returns:
-            Self for method chaining
-        """
-        if forward:
-            return self.add_variable("after", cursor)
-        return self.add_variable("before", cursor)
-
-    def build_query(self) -> str:
-        """Build the complete GraphQL query string."""
-        # Build variable definitions
-        variable_defs = self._build_variable_definitions()
-
-        # Build operation name
-        operation_name = f" {self._operation_name}" if self._operation_name else ""
-
-        # Build field selection
-        field_selection = ""
-        if self._fields:
-            field_selection = self._fields.build(2)
-        else:
-            # Default connection fields if none specified
-            field_selection = """    edges {
-      cursor
-      node {
-        id
-      }
-    }
-    pageInfo {
-      hasNextPage
-      hasPreviousPage
-    }"""
-
-        # Build query arguments
-        query_args = ""
-        if self._variables:
-            args = [f"{name}: ${name}" for name in self._variables]
-            query_args = f"({', '.join(args)})"
-
-        # Build fragments
-        fragments = "\n".join(self._fragments) if self._fragments else ""
-
-        return f"""
-query{operation_name}{variable_defs} {{
-  {self._query_name}{query_args} {{
-{field_selection}
-  }}
-}}
-{fragments}
-        """.strip()
+    def default_fields(self) -> FieldSelector | None:
+        """Edges with cursor and node id, plus pageInfo."""
+        return connection_fields(FieldSelector(["id"]))
 
 
 class CustomFilterableQueryBuilder(CustomQueryBuilder):
-    """Custom filterable query builder with date/shop/app filtering."""
-
-    def __init__(
-        self,
-        query_name: str,
-        fields: Optional[FieldSelector] = None,
-        operation_name: Optional[str] = None,
-    ) -> None:
-        """Initialize custom filterable query builder.
-
-        Args:
-            query_name: The root query field name
-            fields: Field selector for the query
-            operation_name: Optional GraphQL operation name
-        """
-        super().__init__(query_name, fields, operation_name)
-        self._date_range: Optional[dict] = None
+    """Query builder with date, shop, and app filter helpers for ``transactions``."""
 
     def with_date_range(
         self,
-        min_date: Optional[str] = None,
-        max_date: Optional[str] = None,
-    ) -> "CustomFilterableQueryBuilder":
-        """Add date range filter.
+        min_date: str | None = None,
+        max_date: str | None = None,
+    ) -> Self:
+        """Filter by creation date (ISO-8601 strings).
 
-        Args:
-            min_date: Minimum date (ISO-8601)
-            max_date: Maximum date (ISO-8601)
-
-        Returns:
-            Self for method chaining
+        Raises:
+            ValueError: If min_date is after max_date
         """
-        if min_date is not None or max_date is not None:
-            date_range = {"min_date": min_date, "max_date": max_date}
-            # Basic validation for date range
-            if min_date and max_date and min_date > max_date:
-                raise ValueError("min_date cannot be greater than max_date")
-
-            self._date_range = date_range
-            if min_date:
-                self.add_variable("createdAtMin", min_date)
-            if max_date:
-                self.add_variable("createdAtMax", max_date)
-
+        if min_date and max_date and min_date > max_date:
+            raise ValueError("min_date cannot be greater than max_date")
+        self.add_variables(createdAtMin=min_date, createdAtMax=max_date)
         return self
 
     def with_shop_filter(
         self,
-        shop_id: Optional[str] = None,
-        myshopify_domain: Optional[str] = None,
-    ) -> "CustomFilterableQueryBuilder":
-        """Add shop-based filters.
+        shop_id: str | None = None,
+        myshopify_domain: str | None = None,
+    ) -> Self:
+        """Filter by shop ID or myshopify domain."""
+        self.add_variables(shopId=shop_id, myshopifyDomain=myshopify_domain)
+        return self
 
-        Args:
-            shop_id: Filter by shop ID
-            myshopify_domain: Filter by shop domain
-
-        Returns:
-            Self for method chaining
-        """
-        return self.add_variables(
-            shopId=shop_id,
-            myshopifyDomain=myshopify_domain,
-        )
-
-    def with_app_filter(
-        self, app_id: Optional[str] = None
-    ) -> "CustomFilterableQueryBuilder":
-        """Add app-based filter.
-
-        Args:
-            app_id: Filter by app ID
-
-        Returns:
-            Self for method chaining
-        """
-        return self.add_variable("appId", app_id)
+    def with_app_filter(self, app_id: str | None = None) -> Self:
+        """Filter by app ID."""
+        self.add_variable("appId", app_id)
+        return self

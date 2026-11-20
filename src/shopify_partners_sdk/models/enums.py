@@ -1,10 +1,14 @@
-"""Enum types from the Shopify Partners GraphQL API."""
+"""Enum types from the Shopify Partners GraphQL API (version 2026-10).
 
-from enum import Enum
+Each enum mirrors a schema enum value for value; tests/unit/test_enums.py keeps them
+in sync with the bundled schema.
+"""
+
+from enum import StrEnum
 
 
-class AppEventType(str, Enum):
-    """The type of an app event."""
+class AppEventType(StrEnum):
+    """The type of an app event (``App.events``)."""
 
     CREDIT_APPLIED = "CREDIT_APPLIED"
     CREDIT_FAILED = "CREDIT_FAILED"
@@ -29,15 +33,334 @@ class AppEventType(str, Enum):
     USAGE_CHARGE_APPLIED = "USAGE_CHARGE_APPLIED"
 
 
-class AppPricingInterval(str, Enum):
-    """The billing frequency for the app."""
+# Schema name for AppEventType.
+AppEventTypes = AppEventType
 
-    EVERY_30_DAYS = "EVERY_30_DAYS"
+
+class AppPricingInterval(StrEnum):
+    """Billing interval of an app subscription."""
+
     ANNUAL = "ANNUAL"
+    EVERY_30_DAYS = "EVERY_30_DAYS"
 
 
-class TransactionType(str, Enum):
-    """The type of a transaction."""
+class ChargeType(StrEnum):
+    """The type of a charge event."""
+
+    ONE_TIME = "ONE_TIME"
+    RECURRING = "RECURRING"
+    USAGE = "USAGE"
+
+
+class CreditStatus(StrEnum):
+    """The status of a credit event."""
+
+    APPLIED = "APPLIED"
+    FAILED = "FAILED"
+    PENDING = "PENDING"
+
+
+class Currency(StrEnum):
+    """ISO 4217 currency codes accepted by the Partner API."""
+
+    AED = "AED"
+    AFN = "AFN"
+    ALL = "ALL"
+    AMD = "AMD"
+    ANG = "ANG"
+    AOA = "AOA"
+    ARS = "ARS"
+    AUD = "AUD"
+    AWG = "AWG"
+    AZN = "AZN"
+    BAM = "BAM"
+    BBD = "BBD"
+    BDT = "BDT"
+    BGN = "BGN"
+    BHD = "BHD"
+    BIF = "BIF"
+    BMD = "BMD"
+    BND = "BND"
+    BOB = "BOB"
+    BRL = "BRL"
+    BSD = "BSD"
+    BTN = "BTN"
+    BWP = "BWP"
+    BYN = "BYN"
+    BYR = "BYR"
+    BZD = "BZD"
+    CAD = "CAD"
+    CDF = "CDF"
+    CHF = "CHF"
+    CLF = "CLF"
+    CLP = "CLP"
+    CNY = "CNY"
+    COP = "COP"
+    CRC = "CRC"
+    CUC = "CUC"
+    CUP = "CUP"
+    CVE = "CVE"
+    CYP = "CYP"
+    CZK = "CZK"
+    DJF = "DJF"
+    DKK = "DKK"
+    DOP = "DOP"
+    DZD = "DZD"
+    EEK = "EEK"
+    EGP = "EGP"
+    ERN = "ERN"
+    ETB = "ETB"
+    EUR = "EUR"
+    FJD = "FJD"
+    FKP = "FKP"
+    GBP = "GBP"
+    GBX = "GBX"
+    GEL = "GEL"
+    GGP = "GGP"
+    GHC = "GHC"
+    GHS = "GHS"
+    GIP = "GIP"
+    GMD = "GMD"
+    GNF = "GNF"
+    GTQ = "GTQ"
+    GYD = "GYD"
+    HKD = "HKD"
+    HNL = "HNL"
+    HRK = "HRK"
+    HTG = "HTG"
+    HUF = "HUF"
+    IDR = "IDR"
+    ILS = "ILS"
+    IMP = "IMP"
+    INR = "INR"
+    IQD = "IQD"
+    IRR = "IRR"
+    ISK = "ISK"
+    JEP = "JEP"
+    JMD = "JMD"
+    JOD = "JOD"
+    JPY = "JPY"
+    KES = "KES"
+    KGS = "KGS"
+    KHR = "KHR"
+    KID = "KID"
+    KMF = "KMF"
+    KPW = "KPW"
+    KRW = "KRW"
+    KWD = "KWD"
+    KYD = "KYD"
+    KZT = "KZT"
+    LAK = "LAK"
+    LBP = "LBP"
+    LKR = "LKR"
+    LRD = "LRD"
+    LSL = "LSL"
+    LTL = "LTL"
+    LVL = "LVL"
+    LYD = "LYD"
+    MAD = "MAD"
+    MDL = "MDL"
+    MGA = "MGA"
+    MKD = "MKD"
+    MMK = "MMK"
+    MNT = "MNT"
+    MOP = "MOP"
+    MRO = "MRO"
+    MRU = "MRU"
+    MTL = "MTL"
+    MUR = "MUR"
+    MVR = "MVR"
+    MWK = "MWK"
+    MXN = "MXN"
+    MYR = "MYR"
+    MZN = "MZN"
+    NAD = "NAD"
+    NGN = "NGN"
+    NIO = "NIO"
+    NOK = "NOK"
+    NPR = "NPR"
+    NZD = "NZD"
+    OMR = "OMR"
+    PAB = "PAB"
+    PEN = "PEN"
+    PGK = "PGK"
+    PHP = "PHP"
+    PKR = "PKR"
+    PLN = "PLN"
+    PYG = "PYG"
+    QAR = "QAR"
+    RON = "RON"
+    RSD = "RSD"
+    RUB = "RUB"
+    RWF = "RWF"
+    SAR = "SAR"
+    SBD = "SBD"
+    SCR = "SCR"
+    SDG = "SDG"
+    SEK = "SEK"
+    SGD = "SGD"
+    SHP = "SHP"
+    SKK = "SKK"
+    SLL = "SLL"
+    SOS = "SOS"
+    SRD = "SRD"
+    SSP = "SSP"
+    STD = "STD"
+    STN = "STN"
+    SVC = "SVC"
+    SYP = "SYP"
+    SZL = "SZL"
+    THB = "THB"
+    TJS = "TJS"
+    TMM = "TMM"
+    TMT = "TMT"
+    TND = "TND"
+    TOP = "TOP"
+    TRY = "TRY"
+    TTD = "TTD"
+    TWD = "TWD"
+    TZS = "TZS"
+    UAH = "UAH"
+    UGX = "UGX"
+    USD = "USD"
+    UYU = "UYU"
+    UZS = "UZS"
+    VEB = "VEB"
+    VED = "VED"
+    VEF = "VEF"
+    VES = "VES"
+    VND = "VND"
+    VUV = "VUV"
+    WST = "WST"
+    XAF = "XAF"
+    XAG = "XAG"
+    XAU = "XAU"
+    XBA = "XBA"
+    XBB = "XBB"
+    XBC = "XBC"
+    XBD = "XBD"
+    XCD = "XCD"
+    XDR = "XDR"
+    XFU = "XFU"
+    XOF = "XOF"
+    XPD = "XPD"
+    XPF = "XPF"
+    XPT = "XPT"
+    YER = "YER"
+    ZAR = "ZAR"
+    ZMK = "ZMK"
+    ZMW = "ZMW"
+    ZWD = "ZWD"
+    ZWL = "ZWL"
+    ZWN = "ZWN"
+    ZWR = "ZWR"
+    xts = "xts"
+
+
+class EarningType(StrEnum):
+    """The type of an earning event."""
+
+    ADJUSTMENT = "ADJUSTMENT"
+    CHARGE = "CHARGE"
+    CREDIT = "CREDIT"
+    REFUND = "REFUND"
+
+
+class EventOrder(StrEnum):
+    """Sort order for the ``events`` query."""
+
+    OCCURRED_AT_ASC = "OCCURRED_AT_ASC"
+    OCCURRED_AT_DESC = "OCCURRED_AT_DESC"
+
+
+class EventType(StrEnum):
+    """The type of a partner event (``events`` query)."""
+
+    CHARGE_ONE_TIME = "CHARGE_ONE_TIME"
+    CHARGE_RECURRING = "CHARGE_RECURRING"
+    CHARGE_USAGE = "CHARGE_USAGE"
+    CREDIT_APPLIED = "CREDIT_APPLIED"
+    CREDIT_FAILED = "CREDIT_FAILED"
+    CREDIT_PENDING = "CREDIT_PENDING"
+    EARNING_ADJUSTMENT = "EARNING_ADJUSTMENT"
+    EARNING_CHARGE_ONE_TIME = "EARNING_CHARGE_ONE_TIME"
+    EARNING_CHARGE_RECURRING = "EARNING_CHARGE_RECURRING"
+    EARNING_CHARGE_USAGE = "EARNING_CHARGE_USAGE"
+    EARNING_CREDIT = "EARNING_CREDIT"
+    EARNING_REFUND = "EARNING_REFUND"
+    RELATIONSHIP_DEACTIVATED = "RELATIONSHIP_DEACTIVATED"
+    RELATIONSHIP_INSTALLED = "RELATIONSHIP_INSTALLED"
+    RELATIONSHIP_REACTIVATED = "RELATIONSHIP_REACTIVATED"
+    RELATIONSHIP_UNINSTALLED = "RELATIONSHIP_UNINSTALLED"
+    SUBSCRIPTION_CANCELED = "SUBSCRIPTION_CANCELED"
+    SUBSCRIPTION_CANCELLATION_SCHEDULED = "SUBSCRIPTION_CANCELLATION_SCHEDULED"
+    SUBSCRIPTION_CREATED = "SUBSCRIPTION_CREATED"
+    SUBSCRIPTION_FROZEN = "SUBSCRIPTION_FROZEN"
+    SUBSCRIPTION_UNFROZEN = "SUBSCRIPTION_UNFROZEN"
+    SUBSCRIPTION_UPDATED = "SUBSCRIPTION_UPDATED"
+
+
+class ReferralCategory(StrEnum):
+    """The category of a referral."""
+
+    AFFILIATE_STORES = "AFFILIATE_STORES"
+    B2B_PROFIT_SHARE = "B2B_PROFIT_SHARE"
+    CCS_SHOP_PAY_GMV = "CCS_SHOP_PAY_GMV"
+    CO_MARKETING = "CO_MARKETING"
+    INTUIT_POINT_OF_SALE = "INTUIT_POINT_OF_SALE"
+    MARKETS_PRO = "MARKETS_PRO"
+    ONLINE_DTC_GMV = "ONLINE_DTC_GMV"
+    PARTNER_DEVELOPMENT_FUNDS = "PARTNER_DEVELOPMENT_FUNDS"
+    POINT_OF_SALE = "POINT_OF_SALE"
+    POS_SHOPIFY_PAYMENTS_PROFIT = "POS_SHOPIFY_PAYMENTS_PROFIT"
+    SHOPIFY_PLUS = "SHOPIFY_PLUS"
+    SHOPIFY_PLUS_ONE_TIME_REFERRAL = "SHOPIFY_PLUS_ONE_TIME_REFERRAL"
+    TRANSFERRED_STORES = "TRANSFERRED_STORES"
+
+
+class RelationshipState(StrEnum):
+    """The state of an app-shop relationship event."""
+
+    DEACTIVATED = "DEACTIVATED"
+    INSTALLED = "INSTALLED"
+    REACTIVATED = "REACTIVATED"
+    UNINSTALLED = "UNINSTALLED"
+
+
+class SubjectType(StrEnum):
+    """The kind of subject (app or theme) an event is about."""
+
+    APP = "APP"
+    THEME = "THEME"
+
+
+class SubscriptionStatusState(StrEnum):
+    """The state of a subscription status event."""
+
+    CANCELED = "CANCELED"
+    CANCELLATION_SCHEDULED = "CANCELLATION_SCHEDULED"
+    CREATED = "CREATED"
+    FROZEN = "FROZEN"
+    UNFROZEN = "UNFROZEN"
+    UPDATED = "UPDATED"
+
+
+class TaxTransactionType(StrEnum):
+    """The type of a tax transaction."""
+
+    REFERRAL_COMMISSION = "REFERRAL_COMMISSION"
+    SALE_SHOPIFY_FEE = "SALE_SHOPIFY_FEE"
+
+
+class TiersMode(StrEnum):
+    """How tiered prices apply across tiers."""
+
+    GRADUATED = "GRADUATED"
+    VOLUME = "VOLUME"
+
+
+class TransactionType(StrEnum):
+    """The type of a transaction (``transactions(types:)``)."""
 
     APP_ONE_TIME_SALE = "APP_ONE_TIME_SALE"
     APP_SALE_ADJUSTMENT = "APP_SALE_ADJUSTMENT"
@@ -45,162 +368,18 @@ class TransactionType(str, Enum):
     APP_SUBSCRIPTION_SALE = "APP_SUBSCRIPTION_SALE"
     APP_USAGE_SALE = "APP_USAGE_SALE"
     LEGACY = "LEGACY"
-    LEGACY_TRANSACTION = "LEGACY_TRANSACTION"  # Added for schema compatibility
     REFERRAL = "REFERRAL"
     REFERRAL_ADJUSTMENT = "REFERRAL_ADJUSTMENT"
-    REFERRAL_TRANSACTION = "REFERRAL_TRANSACTION"  # Added for schema compatibility
     SERVICE_SALE = "SERVICE_SALE"
     SERVICE_SALE_ADJUSTMENT = "SERVICE_SALE_ADJUSTMENT"
     TAX = "TAX"
-    TAX_TRANSACTION = "TAX_TRANSACTION"  # Added for schema compatibility
     THEME_SALE = "THEME_SALE"
     THEME_SALE_ADJUSTMENT = "THEME_SALE_ADJUSTMENT"
 
 
-class Currency(str, Enum):
-    """ISO 4217 currency codes supported by Shopify Partners API."""
+class EventsinkTopic(StrEnum):
+    """Event sink topics (unstable API only)."""
 
-    # Major currencies
-    USD = "USD"  # United States dollar
-    EUR = "EUR"  # Euro
-    GBP = "GBP"  # British pound
-    CAD = "CAD"  # Canadian dollar
-    AUD = "AUD"  # Australian dollar
-    JPY = "JPY"  # Japanese yen
-    CHF = "CHF"  # Swiss franc
-    NZD = "NZD"  # New Zealand dollar
-    SEK = "SEK"  # Swedish krona
-    NOK = "NOK"  # Norwegian krone
-    DKK = "DKK"  # Danish krone
-    PLN = "PLN"  # Polish złoty
-    CZK = "CZK"  # Czech koruna
-    HUF = "HUF"  # Hungarian forint
-
-    # Asian currencies
-    CNY = "CNY"  # Chinese yuan
-    KRW = "KRW"  # South Korean won
-    HKD = "HKD"  # Hong Kong dollar
-    SGD = "SGD"  # Singapore dollar
-    THB = "THB"  # Thai baht
-    INR = "INR"  # Indian rupee
-    MYR = "MYR"  # Malaysian ringgit
-    PHP = "PHP"  # Philippine peso
-    IDR = "IDR"  # Indonesian rupiah
-    VND = "VND"  # Vietnamese đồng
-
-    # Latin American currencies
-    BRL = "BRL"  # Brazilian real
-    MXN = "MXN"  # Mexican peso
-    ARS = "ARS"  # Argentine peso
-    CLP = "CLP"  # Chilean peso
-    COP = "COP"  # Colombian peso
-    PEN = "PEN"  # Peruvian sol
-
-    # African currencies
-    ZAR = "ZAR"  # South African rand
-    NGN = "NGN"  # Nigerian naira
-    EGP = "EGP"  # Egyptian pound
-
-    # Middle Eastern currencies
-    AED = "AED"  # UAE dirham
-    SAR = "SAR"  # Saudi riyal
-    ILS = "ILS"  # Israeli shekel
-    TRY = "TRY"  # Turkish lira
-
-    # Precious metals (testing)
-    XAG = "XAG"  # Silver
-    XAU = "XAU"  # Gold
-    XTS = "XTS"  # Testing currency code
-
-
-class ConversationStatus(str, Enum):
-    """The status of a conversation (DEPRECATED)."""
-
-    ACTIVE = "ACTIVE"
-    BLOCKED = "BLOCKED"
-
-
-class JobStatus(str, Enum):
-    """The status of a job (DEPRECATED)."""
-
-    NEW = "NEW"
-    OPENED = "OPENED"
-    RESPONDED = "RESPONDED"
-    AWAITING_RESPONSE = "AWAITING_RESPONSE"
-    COMPLETED = "COMPLETED"
-    DECLINED = "DECLINED"
-    CLOSED = "CLOSED"
-    EXPIRED = "EXPIRED"
-    INACTIVE = "INACTIVE"
-
-
-class MessageSentVia(str, Enum):
-    """Platform used to send a message."""
-
-    EMAIL = "EMAIL"
-    PARTNERS_DASHBOARD = "PARTNERS_DASHBOARD"
-    PHONE = "PHONE"
-
-
-class EventsinkTopic(str, Enum):
-    """Event sink topics (unstable API)."""
-
-    CUSTOMER_EVENTS_CREATE = "CUSTOMER_EVENTS_CREATE"
     CUSTOMERS_REDACT = "CUSTOMERS_REDACT"
+    CUSTOMER_EVENTS_CREATE = "CUSTOMER_EVENTS_CREATE"
     DELIVERY_PROMISES_CREATE = "DELIVERY_PROMISES_CREATE"
-
-
-class EventsinkQueue(str, Enum):
-    """Event sink queue types (unstable API)."""
-
-    STANDARD = "STANDARD"
-    PRIORITY = "PRIORITY"
-
-
-class TaxType(str, Enum):
-    """Types of tax transactions."""
-
-    GST = "GST"
-    HST = "HST"
-    PST = "PST"
-    QST = "QST"
-    VAT = "VAT"
-    SALES_TAX = "SALES_TAX"
-    OTHER = "OTHER"
-
-
-class ChargeStatus(str, Enum):
-    """Status of app charges."""
-
-    PENDING = "PENDING"
-    ACCEPTED = "ACCEPTED"
-    ACTIVE = "ACTIVE"
-    DECLINED = "DECLINED"
-    EXPIRED = "EXPIRED"
-    FROZEN = "FROZEN"
-    CANCELLED = "CANCELLED"
-
-
-class ServiceType(str, Enum):
-    """Types of services in the Experts Marketplace."""
-
-    SETUP = "SETUP"
-    DEVELOPMENT = "DEVELOPMENT"
-    DESIGN = "DESIGN"
-    MARKETING = "MARKETING"
-    TRAINING = "TRAINING"
-    CONSULTATION = "CONSULTATION"
-    MAINTENANCE = "MAINTENANCE"
-    OTHER = "OTHER"
-
-
-class ApiVersionStatus(str, Enum):
-    """Status of API versions."""
-
-    SUPPORTED = "SUPPORTED"
-    DEPRECATED = "DEPRECATED"
-    UNSUPPORTED = "UNSUPPORTED"
-
-
-# Type aliases for backwards compatibility
-AppEventTypes = AppEventType  # Match GraphQL schema naming

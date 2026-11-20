@@ -1,9 +1,8 @@
 """Shop-related model objects for the Shopify Partners API."""
 
-from pydantic import Field, validator
+from pydantic import Field, field_validator
 
 from shopify_partners_sdk.models.base import Actor
-from shopify_partners_sdk.models.scalars import URL
 
 
 class Shop(Actor):
@@ -12,16 +11,17 @@ class Shop(Actor):
     Represents a merchant's shop that can install apps from the Partner organization.
     """
 
-    myshopify_domain: URL = Field(
+    myshopify_domain: str = Field(
         ...,
         description="The shop's .myshopify.com domain name",
         alias="myshopifyDomain",
     )
 
-    @validator("myshopify_domain")
+    @field_validator("myshopify_domain")
+    @classmethod
     def validate_myshopify_domain(cls, v: str) -> str:
         """Validate that the domain ends with .myshopify.com."""
-        if not v.endswith(".myshopify.com"):
+        if not v.endswith(".myshopify.com") or v == ".myshopify.com":
             raise ValueError("myshopify_domain must end with .myshopify.com")
         return v
 

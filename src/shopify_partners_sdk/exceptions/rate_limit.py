@@ -1,5 +1,7 @@
 """Rate limiting exceptions for the Shopify Partners SDK."""
 
+from typing import Any
+
 from .base import ShopifyPartnersSDKError
 
 
@@ -10,7 +12,7 @@ class RateLimitError(ShopifyPartnersSDKError):
         self,
         message: str = "API rate limit exceeded",
         retry_after: float | None = None,
-        details: dict | None = None,
+        details: dict[str, Any] | None = None,
     ) -> None:
         """Initialize the rate limit error.
 
@@ -64,7 +66,7 @@ class RateLimitServerError(RateLimitError):
     def __init__(
         self,
         retry_after: float | None = None,
-        details: dict | None = None,
+        details: dict[str, Any] | None = None,
     ) -> None:
         """Initialize the server rate limit error.
 

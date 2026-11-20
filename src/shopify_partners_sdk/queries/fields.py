@@ -1,18 +1,29 @@
 """Field selection utilities for dynamic GraphQL query building."""
 
-from typing import Optional, Union
+from typing import TYPE_CHECKING, Any
+
+from shopify_partners_sdk.exceptions.validation import SchemaValidationError
+from shopify_partners_sdk.schema import named_type
+from shopify_partners_sdk.values import graphql_literal
+
+if TYPE_CHECKING:
+    from shopify_partners_sdk.schema import PartnerSchema
+
+FRAGMENT_PREFIX = "... on "
+TYPENAME = "__typename"
 
 
 class FieldSelector:
     """Builder for selecting GraphQL fields dynamically."""
 
-    def __init__(self, base_fields: Optional[list[str]] = None) -> None:
+    def __init__(self, base_fields: list[str] | None = None) -> None:
         """Initialize field selector.
 
         Args:
             base_fields: Base fields to always include
         """
-        self._fields: dict[str, Union[str, FieldSelector, list[str]]] = {}
+        self._fields: dict[str, str | FieldSelector] = {}
+        self._args: dict[str, Any] = {}
         if base_fields:
             for field in base_fields:
                 self._fields[field] = field
@@ -85,7 +96,7 @@ class FieldSelector:
         node_fields: "FieldSelector",
         include_page_info: bool = True,
         include_edges: bool = True,
-        **connection_args,
+        **connection_args: Any,
     ) -> "FieldSelector":
         """Add a GraphQL connection field with edges and pageInfo.
 
@@ -99,23 +110,12 @@ class FieldSelector:
         Returns:
             Self for chaining
         """
-        connection_selector = FieldSelector()
-
-        if include_edges:
-            edge_selector = FieldSelector(["cursor"])
-            edge_selector.add_nested_field("node", node_fields)
-            connection_selector.add_nested_field("edges", edge_selector)
-        else:
-            # Direct node selection (for some GraphQL schemas)
-            connection_selector.add_nested_field("nodes", node_fields)
-
-        if include_page_info:
-            page_info_selector = FieldSelector(["hasNextPage", "hasPreviousPage"])
-            connection_selector.add_nested_field("pageInfo", page_info_selector)
-
-        # Store connection arguments if provided
-        if connection_args:
-            connection_selector._connection_args = connection_args
+        connection_selector = connection_fields(
+            node_fields,
+            include_edges=include_edges,
+            include_page_info=include_page_info,
+        )
+        connection_selector._args = dict(connection_args)
 
         self._fields[field] = connection_selector
         return self
@@ -129,8 +129,7 @@ class FieldSelector:
         Returns:
             Self for chaining
         """
-        money_selector = FieldSelector(["amount", "currencyCode"])
-        self._fields[field] = money_selector
+        self._fields[field] = CommonFields.money_fields()
         return self
 
     def remove_field(self, field: str) -> "FieldSelector":
@@ -145,74 +144,164 @@ class FieldSelector:
         self._fields.pop(field, None)
         return self
 
-    def build(self, indent: int = 0) -> str:
+    def build(
+        self,
+        indent: int = 0,
+        schema: "PartnerSchema | None" = None,
+        type_name: str | None = None,
+    ) -> str:
         """Build the GraphQL field selection string.
 
         Args:
             indent: Indentation level
+            schema: Partner API schema to validate against (optional)
+            type_name: GraphQL type these fields are selected on; required with schema
 
         Returns:
             GraphQL fields string
+
+        Raises:
+            SchemaValidationError: If a field, argument, enum value, or fragment does
+                not exist on ``type_name`` in ``schema``
         """
-        if not self._fields:
-            return ""
-
-        lines = []
-        base_indent = "  " * indent
-
-        for field_name, field_value in self._fields.items():
-            if isinstance(field_value, str):
-                # Simple field
-                lines.append(f"{base_indent}{field_name}")
-            elif isinstance(field_value, FieldSelector):
-                # Nested field - check if it has connection arguments
-                field_args = ""
-                if (
-                    hasattr(field_value, "_connection_args")
-                    and field_value._connection_args
-                ):
-                    args = []
-                    for arg_name, arg_value in field_value._connection_args.items():
-                        if isinstance(arg_value, str):
-                            args.append(f'{arg_name}: "{arg_value}"')
-                        else:
-                            args.append(f"{arg_name}: {arg_value}")
-                    field_args = f"({', '.join(args)})"
-
-                nested_fields = field_value.build(indent + 1)
-                if nested_fields:
-                    lines.append(f"{base_indent}{field_name}{field_args} {{")
-                    lines.append(nested_fields)
-                    lines.append(f"{base_indent}}}")
-                else:
-                    lines.append(f"{base_indent}{field_name}{field_args}")
-            elif isinstance(field_value, list):
-                # List of simple fields (shouldn't happen with current API)
-                for subfield in field_value:
-                    lines.append(f"{base_indent}{field_name}.{subfield}")
-
+        lines: list[str] = []
+        for name, value in self._fields.items():
+            lines.extend(self._render(name, value, indent, schema, type_name))
         return "\n".join(lines)
+
+    def _render(
+        self,
+        name: str,
+        value: "str | FieldSelector",
+        indent: int,
+        schema: "PartnerSchema | None",
+        parent: str | None,
+    ) -> list[str]:
+        pad = "  " * indent
+        if schema is None or parent is None:
+            schema, parent = None, None
+        child_type: str | None = None
+        args = ""
+        if name.startswith(FRAGMENT_PREFIX):
+            child_type = name[len(FRAGMENT_PREFIX) :].strip()
+            if not value:
+                raise SchemaValidationError(
+                    f"Fragment on '{child_type}' must select at least one field."
+                )
+            if schema is not None and parent is not None:
+                schema.check_fragment(parent, child_type)
+        else:
+            if schema is not None and parent is not None:
+                child_type = _check_field(schema, parent, name, value)
+            args = _render_args(name, value, schema, parent)
+
+        if isinstance(value, FieldSelector):
+            nested = value.build(indent + 1, schema, child_type)
+            if nested:
+                return [f"{pad}{name}{args} {{", nested, f"{pad}}}"]
+        return [f"{pad}{name}{args}"]
 
     def __str__(self) -> str:
         """String representation."""
         return self.build()
 
+    def __len__(self) -> int:
+        """Number of selected fields; an empty selector is falsy."""
+        return len(self._fields)
+
     def copy(self) -> "FieldSelector":
-        """Create a deep copy of this field selector.
+        """Create a deep copy of this field selector, including field arguments.
 
         Returns:
             New FieldSelector instance
         """
         new_selector = FieldSelector()
+        new_selector._args = dict(self._args)
         for field_name, field_value in self._fields.items():
-            if isinstance(field_value, str):
-                new_selector._fields[field_name] = field_value
-            elif isinstance(field_value, FieldSelector):
+            if isinstance(field_value, FieldSelector):
                 new_selector._fields[field_name] = field_value.copy()
             else:
                 new_selector._fields[field_name] = field_value
-
         return new_selector
+
+
+def connection_fields(
+    node_fields: FieldSelector,
+    *,
+    include_edges: bool = True,
+    include_page_info: bool = True,
+) -> FieldSelector:
+    """Wrap node fields in ``edges { cursor node { ... } } pageInfo { ... }``."""
+    connection = FieldSelector()
+    if include_edges:
+        edges = FieldSelector(["cursor"]).add_nested_field("node", node_fields)
+        connection.add_nested_field("edges", edges)
+    else:
+        connection.add_nested_field("nodes", node_fields)
+    if include_page_info:
+        connection.add_nested_field("pageInfo", CommonFields.page_info())
+    return connection
+
+
+def _check_field(
+    schema: "PartnerSchema",
+    parent: str,
+    name: str,
+    value: str | FieldSelector,
+) -> str | None:
+    """Validate one selected field and return the type its sub-fields select on."""
+    if name == TYPENAME:
+        if isinstance(value, FieldSelector):
+            raise SchemaValidationError(f"'{TYPENAME}' takes no sub-selection.")
+        return None
+
+    field_type = named_type(schema.field(parent, name)["type"])
+    has_subfields = isinstance(value, FieldSelector) and bool(value)
+    if schema.is_leaf(field_type) and isinstance(value, FieldSelector):
+        raise SchemaValidationError(
+            f"Field '{parent}.{name}' returns {field_type}, which takes no "
+            "sub-selection. Add it with add_field()."
+        )
+    if not schema.is_leaf(field_type) and not has_subfields:
+        raise SchemaValidationError(
+            f"Field '{parent}.{name}' returns {field_type}; select at least one of "
+            f"its fields with add_nested_field() or add_connection_field()."
+        )
+    return field_type
+
+
+def _render_args(
+    name: str,
+    value: str | FieldSelector,
+    schema: "PartnerSchema | None",
+    parent: str | None,
+) -> str:
+    args = value._args if isinstance(value, FieldSelector) else {}
+    if schema is not None and parent is not None:
+        _check_required_args(schema, parent, name, args)
+    if not args:
+        return ""
+    rendered = []
+    for arg_name, arg_value in args.items():
+        arg_type = (
+            schema.argument_type(parent, name, arg_name)
+            if schema is not None and parent is not None
+            else None
+        )
+        rendered.append(f"{arg_name}: {graphql_literal(arg_value, arg_type, schema)}")
+    return f"({', '.join(rendered)})"
+
+
+def _check_required_args(
+    schema: "PartnerSchema", parent: str, name: str, args: dict[str, Any]
+) -> None:
+    if name == TYPENAME:
+        return
+    missing = [a for a in schema.required_arguments(parent, name) if a not in args]
+    if missing:
+        raise SchemaValidationError(
+            f"Field '{parent}.{name}' requires argument(s): {', '.join(missing)}."
+        )
 
 
 # Predefined common field selectors
@@ -221,8 +310,8 @@ class CommonFields:
 
     @staticmethod
     def basic_node() -> FieldSelector:
-        """Basic node fields (id, createdAt, updatedAt)."""
-        return FieldSelector(["id", "createdAt", "updatedAt"])
+        """Fields every Node has (id)."""
+        return FieldSelector(["id"])
 
     @staticmethod
     def money_fields() -> FieldSelector:
@@ -241,29 +330,18 @@ class CommonFields:
 
     @staticmethod
     def basic_app() -> FieldSelector:
-        """Basic app fields."""
-        return (
-            FieldSelector()
-            .add_fields("id", "title", "handle", "appStoreAppUrl", "developerName")
-            .add_field("createdAt")
-            .add_field("updatedAt")
-        )
+        """Basic App fields."""
+        return FieldSelector(["id", "name", "apiKey"])
 
     @staticmethod
     def basic_transaction() -> FieldSelector:
-        """Basic transaction fields."""
-        return (
-            FieldSelector()
-            .add_fields("id", "createdAt", "test")
-            .add_money_field("netAmount")
-            .add_money_field("grossAmount")
-        )
+        """Fields shared by every Transaction type, plus its concrete type name.
+
+        Amounts differ per transaction type; select them with add_interface_field().
+        """
+        return FieldSelector(["id", "createdAt", TYPENAME])
 
     @staticmethod
     def basic_shop() -> FieldSelector:
-        """Basic shop fields."""
-        return (
-            FieldSelector()
-            .add_fields("id", "name", "myshopifyDomain", "url")
-            .add_field("createdAt")
-        )
+        """Basic Shop fields."""
+        return FieldSelector(["id", "name", "myshopifyDomain"])

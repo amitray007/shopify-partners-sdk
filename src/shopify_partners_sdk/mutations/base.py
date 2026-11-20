@@ -1,6 +1,6 @@
 """Core mutation result container for GraphQL mutations."""
 
-from typing import Any, Optional
+from typing import Any
 
 
 class MutationResult:
@@ -12,7 +12,7 @@ class MutationResult:
         mutation: str,
         variables: dict[str, Any],
         raw_response: dict[str, Any],
-        errors: Optional[list[dict[str, Any]]] = None,
+        errors: list[dict[str, Any]] | None = None,
     ) -> None:
         """Initialize mutation result.
 
@@ -30,7 +30,7 @@ class MutationResult:
         self.errors = errors or []
 
     @property
-    def extensions(self) -> Optional[dict[str, Any]]:
+    def extensions(self) -> dict[str, Any] | None:
         """Get extensions from GraphQL response."""
         return self.raw_response.get("extensions")
 

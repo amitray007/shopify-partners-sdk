@@ -2,6 +2,7 @@
 
 from pydantic import Field
 
+from shopify_partners_sdk.config.defaults import DEFAULT_API_VERSION
 from shopify_partners_sdk.models.base import ShopifyPartnersBaseModel
 
 
@@ -23,8 +24,8 @@ class ApiVersion(ShopifyPartnersBaseModel):
 
     @property
     def is_current(self) -> bool:
-        """Check if this is the current stable version (2025-04)."""
-        return self.handle == "2025-04"
+        """Check if this is the current stable version (the SDK default API version)."""
+        return self.handle == DEFAULT_API_VERSION
 
     def __str__(self) -> str:
         """String representation showing version details."""

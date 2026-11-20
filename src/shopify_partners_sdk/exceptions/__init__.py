@@ -26,6 +26,7 @@ from .validation import (
     InvalidDateRangeError,
     InvalidGlobalIdError,
     InvalidPageSizeError,
+    SchemaValidationError,
     ValidationError,
 )
 
@@ -55,4 +56,5 @@ __all__ = [
     "InvalidPageSizeError",
     "InvalidCursorError",
     "InvalidDateRangeError",
+    "SchemaValidationError",
 ]

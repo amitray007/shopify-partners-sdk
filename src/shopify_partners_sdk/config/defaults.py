@@ -3,7 +3,7 @@
 from typing import Final
 
 # API Configuration
-DEFAULT_API_VERSION: Final[str] = "2025-04"
+DEFAULT_API_VERSION: Final[str] = "2026-10"
 DEFAULT_BASE_URL: Final[str] = "https://partners.shopify.com"
 DEFAULT_GRAPHQL_PATH: Final[str] = "api/{version}/graphql.json"
 

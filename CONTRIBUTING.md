@@ -1,464 +1,83 @@
 # Contributing to Shopify Partners SDK
 
-Thank you for your interest in contributing to the Shopify Partners SDK! We welcome contributions from the community and are grateful for your help in making this project better.
+Thank you for helping. This guide covers setup, checks, and the steps for new API versions. Report unacceptable behavior to the [maintainer](mailto:mail@amitray.dev). Be respectful and constructive.
 
-## 📋 Table of Contents
+## Setup
 
-- [Code of Conduct](#code-of-conduct)
-- [Getting Started](#getting-started)
-- [Development Setup](#development-setup)
-- [Contributing Guidelines](#contributing-guidelines)
-- [Pull Request Process](#pull-request-process)
-- [Coding Standards](#coding-standards)
-- [Testing](#testing)
-- [Documentation](#documentation)
-- [Issue Reporting](#issue-reporting)
-- [Community](#community)
-
-## 🤝 Code of Conduct
-
-This project and everyone participating in it is governed by our Code of Conduct. By participating, you are expected to uphold this code. Please report unacceptable behavior to the [maintainer](mailto:mail@amitray.dev).
-
-### Our Standards
-
-- **Be respectful**: Treat everyone with respect and kindness
-- **Be inclusive**: Welcome newcomers and help them get started
-- **Be constructive**: Provide helpful feedback and suggestions
-- **Be patient**: Remember that everyone has different experience levels
-
-## 🚀 Getting Started
-
-### Prerequisites
-
-- Python 3.9 or higher
-- [Poetry](https://python-poetry.org/) for dependency management
-- Git for version control
-- A Shopify Partners account for testing (optional but recommended)
-
-### Development Setup
-
-1. **Fork and Clone the Repository**
-   ```bash
-   git clone https://github.com/your-username/shopify-partners-sdk.git
-   cd shopify-partners-sdk
-   ```
-
-2. **Install Poetry** (if not already installed)
-   ```bash
-   curl -sSL https://install.python-poetry.org | python3 -
-   ```
-
-3. **Install Dependencies**
-   ```bash
-   poetry install
-   ```
-
-4. **Activate the Virtual Environment**
-   ```bash
-   poetry shell
-   ```
-
-5. **Install Pre-commit Hooks**
-   ```bash
-   pre-commit install
-   ```
-
-6. **Verify Installation**
-   ```bash
-   poetry run pytest --version
-   poetry run ruff --version
-   poetry run mypy --version
-   ```
-
-## 📝 Contributing Guidelines
-
-### Types of Contributions
-
-We welcome several types of contributions:
-
-- **🐛 Bug Reports**: Help us identify and fix issues
-- **✨ Feature Requests**: Suggest new features or improvements
-- **📖 Documentation**: Improve or add documentation
-- **🔧 Code Contributions**: Fix bugs or implement new features
-- **🧪 Tests**: Add or improve test coverage
-- **🎨 Examples**: Create usage examples or tutorials
-
-### Before You Start
-
-1. **Check Existing Issues**: Look through existing issues to avoid duplicates
-2. **Discuss Major Changes**: For significant changes, open an issue first to discuss
-3. **Follow Conventions**: Adhere to our coding standards and conventions
-4. **Write Tests**: Include tests for new features or bug fixes
-
-## 🔄 Pull Request Process
-
-### 1. Create a Feature Branch
+You need Python 3.11 or later and [Poetry](https://python-poetry.org/). CI tests Python 3.11 to 3.14.
 
 ```bash
-git checkout -b feature/your-feature-name
-# or
-git checkout -b fix/issue-description
+git clone https://github.com/your-username/shopify-partners-sdk.git
+cd shopify-partners-sdk
+poetry install --with dev
+poetry run pytest --version
 ```
 
-### 2. Make Your Changes
+## Make a change
 
-- Write clean, readable code
-- Follow our coding standards
-- Add tests for new functionality
-- Update documentation as needed
+1. Open an issue first for a large change.
+2. Create a branch: `git checkout -b feat/your-change`.
+3. Write the change and its tests.
+4. Run the checks below.
+5. Commit with a [conventional commit](https://www.conventionalcommits.org/) message: `feat:`, `fix:`, `docs:`, `refactor:`, `test:`, or `chore:`.
+6. Open a pull request. Describe the problem, the fix, and how you tested it. Note any breaking change.
 
-### 3. Test Your Changes
+## Checks
+
+CI runs these on every pull request. Run them before you push.
 
 ```bash
-# Run all tests
+poetry run ruff check src tests schema/utils/build_sdk_schema.py
+poetry run black --check src tests schema/utils/build_sdk_schema.py
+poetry run mypy src
 poetry run pytest
-
-# Run linting
-poetry run ruff check .
-poetry run ruff format --check .
-
-# Run type checking
-poetry run mypy .
-
-# Run security checks
-poetry run bandit -r src/
-
-# Check test coverage
-poetry run pytest --cov=shopify_partners_sdk --cov-report=term-missing
 ```
 
-### 4. Commit Your Changes
-
-Use conventional commit messages:
+Useful `pytest` commands:
 
 ```bash
-git add .
-git commit -m "feat: add new field selector for app events"
-# or
-git commit -m "fix: handle rate limiting in pagination"
-# or
-git commit -m "docs: update installation instructions"
+poetry run pytest tests/unit/test_schema.py   # one file
+poetry run pytest -m unit                     # unit tests only
+poetry run pytest --cov=shopify_partners_sdk  # coverage (on by default)
 ```
 
-#### Commit Message Format
-
-- `feat:` - New features
-- `fix:` - Bug fixes
-- `docs:` - Documentation changes
-- `style:` - Code style changes (formatting, etc.)
-- `refactor:` - Code refactoring
-- `test:` - Adding or updating tests
-- `chore:` - Maintenance tasks
-
-### 5. Push and Create Pull Request
+Unit tests run offline. Live tests in `tests/integration` run only when you set both variables. The token needs read access to apps and financials.
 
 ```bash
-git push origin feature/your-feature-name
+export SHOPIFY_PARTNERS_LIVE_ORGANIZATION_ID=123456
+export SHOPIFY_PARTNERS_LIVE_ACCESS_TOKEN=prtapi_...
+poetry run pytest -m integration --no-cov
 ```
 
-Then create a pull request on GitHub with:
+## Code style
 
-- **Clear Title**: Describe what the PR does
-- **Detailed Description**: Explain the changes and why they're needed
-- **Issue References**: Link to related issues
-- **Testing Notes**: Describe how you tested the changes
-- **Breaking Changes**: Note any breaking changes
+- Black formatting, 88 columns. Ruff for linting and import order.
+- Type hints on all public APIs. `mypy` must pass on `src`.
+- Use built-in generics (`dict[str, Any]`, `list[str]`) and `X | None`.
+- Write tests for new behavior. Mock HTTP calls. Do not call the live API from unit tests.
 
-### Pull Request Template
+## Add a new API version
 
-```markdown
-## Description
-Brief description of changes
+Shopify ships a Partners API version each quarter. The SDK bundles one schema file per version.
 
-## Type of Change
-- [ ] Bug fix
-- [ ] New feature
-- [ ] Breaking change
-- [ ] Documentation update
+1. Get the introspection result for the new version. Use the introspection query in [schema/README.md](schema/README.md) against `https://partners.shopify.com/{organization_id}/api/{version}/graphql`, or copy it from a published source. Save it as `schema/versions/<version>/introspection.json`.
+2. Add the version to `SUPPORTED_VERSIONS` in `schema/utils/build_sdk_schema.py`. Remove versions Shopify retired.
+3. Generate the bundled schema from the repository root:
 
-## Testing
-- [ ] Tests pass locally
-- [ ] Added tests for new functionality
-- [ ] Manual testing completed
+   ```bash
+   python schema/utils/build_sdk_schema.py            # all supported versions
+   python schema/utils/build_sdk_schema.py 2027-04    # one version
+   ```
 
-## Checklist
-- [ ] Code follows style guidelines
-- [ ] Self-review completed
-- [ ] Documentation updated
-- [ ] No breaking changes (or clearly documented)
-```
+   The generator writes `src/shopify_partners_sdk/schema/data/partner_<version>.json`.
+4. To change the default, set `DEFAULT_API_VERSION` in `src/shopify_partners_sdk/config/defaults.py`. Update the expected values in `tests/unit/test_schema.py` to match.
+5. Run `poetry run pytest`. `tests/unit/test_schema.py` and `tests/unit/test_enums.py` fail when the bundled schema, the supported list, the default, or the Python enums drift apart. Fix each failure.
+6. Update examples in `README.md` for removed or renamed fields. Run each one against the new schema.
 
-## 🎨 Coding Standards
+## Report an issue
 
-### Python Style Guide
+Search existing issues first. Include the SDK version, the Python version, the API version, a minimal reproduction, and the full error message. For a security issue, email the maintainer instead of opening a public issue.
 
-We follow [PEP 8](https://pep8.org/) with some modifications:
+## License
 
-- **Line Length**: 88 characters (Black default)
-- **Imports**: Use `isort` for import sorting
-- **Type Hints**: Required for all public APIs
-- **Docstrings**: Google-style docstrings for all public functions/classes
-
-### Code Quality Tools
-
-We use several tools to maintain code quality:
-
-- **[Black](https://black.readthedocs.io/)**: Code formatting
-- **[Ruff](https://docs.astral.sh/ruff/)**: Fast Python linter
-- **[MyPy](https://mypy.readthedocs.io/)**: Static type checking
-- **[isort](https://pycqa.github.io/isort/)**: Import sorting
-- **[Bandit](https://bandit.readthedocs.io/)**: Security linting
-
-### Example Code Style
-
-```python
-from typing import Dict, List, Optional, Union
-
-from pydantic import BaseModel, Field
-
-from shopify_partners_sdk.exceptions import GraphQLError
-
-
-class AppQuery(BaseModel):
-    """Represents an app query with field selection.
-    
-    Args:
-        app_id: The unique identifier for the app.
-        fields: List of fields to include in the query.
-        include_events: Whether to include app events in the response.
-        
-    Raises:
-        GraphQLError: If the query is invalid.
-        
-    Example:
-        >>> query = AppQuery(
-        ...     app_id="gid://shopify/App/123",
-        ...     fields=["id", "title", "handle"],
-        ...     include_events=True
-        ... )
-        >>> result = client.execute_query(query)
-    """
-    
-    app_id: str = Field(..., description="The app identifier")
-    fields: List[str] = Field(default_factory=list, description="Fields to query")
-    include_events: bool = Field(default=False, description="Include app events")
-    
-    def to_graphql(self) -> str:
-        """Convert the query to GraphQL format.
-        
-        Returns:
-            The GraphQL query string.
-            
-        Raises:
-            GraphQLError: If the query cannot be converted.
-        """
-        if not self.fields:
-            raise GraphQLError("At least one field must be specified")
-            
-        # Implementation here...
-        return query_string
-```
-
-## 🧪 Testing
-
-### Test Structure
-
-```
-tests/
-├── unit/                 # Unit tests
-│   ├── test_client.py
-│   ├── test_models.py
-│   └── test_queries.py
-├── integration/          # Integration tests
-│   ├── test_api_calls.py
-│   └── test_pagination.py
-└── fixtures/             # Test data and fixtures
-    ├── responses.json
-    └── test_data.py
-```
-
-### Writing Tests
-
-- **Unit Tests**: Test individual functions/classes in isolation
-- **Integration Tests**: Test interactions between components
-- **Use Fixtures**: Create reusable test data
-- **Mock External Calls**: Use `responses` library for HTTP mocking
-
-### Test Example
-
-```python
-import pytest
-from responses import mock
-
-from shopify_partners_sdk import ShopifyPartnersClient
-from shopify_partners_sdk.exceptions import AuthenticationError
-
-
-class TestShopifyPartnersClient:
-    """Test cases for ShopifyPartnersClient."""
-    
-    def test_client_initialization(self):
-        """Test client can be initialized with valid credentials."""
-        client = ShopifyPartnersClient(
-            organization_id="test-org",
-            access_token="test-token"
-        )
-        assert client.organization_id == "test-org"
-        assert client.access_token == "test-token"
-    
-    @mock.activate
-    def test_authentication_error(self):
-        """Test client raises AuthenticationError for invalid credentials."""
-        mock.add(
-            mock.POST,
-            "https://partners.shopify.com/api/graphql",
-            json={"errors": [{"message": "Invalid credentials"}]},
-            status=401
-        )
-        
-        client = ShopifyPartnersClient(
-            organization_id="invalid",
-            access_token="invalid"
-        )
-        
-        with pytest.raises(AuthenticationError):
-            client.execute_raw("query { apps { id } }")
-```
-
-### Running Tests
-
-```bash
-# Run all tests
-poetry run pytest
-
-# Run specific test file
-poetry run pytest tests/unit/test_client.py
-
-# Run with coverage
-poetry run pytest --cov=shopify_partners_sdk
-
-# Run only unit tests
-poetry run pytest -m unit
-
-# Run only integration tests
-poetry run pytest -m integration
-```
-
-## 📖 Documentation
-
-### Documentation Types
-
-- **API Documentation**: Docstrings in code
-- **User Guide**: Usage examples and tutorials
-- **Contributing Guide**: This document
-- **Changelog**: Version history and changes
-
-### Writing Documentation
-
-- **Clear and Concise**: Use simple language
-- **Include Examples**: Show practical usage
-- **Keep Updated**: Update docs with code changes
-- **Use Proper Formatting**: Follow Markdown conventions
-
-### Building Documentation Locally
-
-```bash
-# Install documentation dependencies
-poetry install --with docs
-
-# Build documentation
-cd docs
-make html
-
-# View documentation
-open _build/html/index.html
-```
-
-## 🐛 Issue Reporting
-
-### Before Reporting
-
-1. **Search Existing Issues**: Check if the issue already exists
-2. **Check Documentation**: Ensure it's not a usage question
-3. **Test with Latest Version**: Verify the issue exists in the latest release
-
-### Bug Report Template
-
-```markdown
-**Describe the Bug**
-A clear description of what the bug is.
-
-**To Reproduce**
-Steps to reproduce the behavior:
-1. Initialize client with '...'
-2. Call method '...'
-3. See error
-
-**Expected Behavior**
-What you expected to happen.
-
-**Actual Behavior**
-What actually happened.
-
-**Environment**
-- OS: [e.g., macOS 12.0]
-- Python version: [e.g., 3.9.0]
-- SDK version: [e.g., 0.1.1]
-
-**Additional Context**
-Any other context about the problem.
-```
-
-### Feature Request Template
-
-```markdown
-**Feature Description**
-A clear description of the feature you'd like to see.
-
-**Use Case**
-Describe the problem this feature would solve.
-
-**Proposed Solution**
-How you think this feature should work.
-
-**Alternatives Considered**
-Other solutions you've considered.
-
-**Additional Context**
-Any other context or screenshots.
-```
-
-## 💬 Community
-
-### Getting Help
-
-- **GitHub Discussions**: Ask questions and share ideas
-- **Issues**: Report bugs and request features
-- **Email**: Contact maintainers directly for sensitive issues
-
-### Communication Guidelines
-
-- **Be Respectful**: Treat everyone with kindness
-- **Be Clear**: Provide context and details
-- **Be Patient**: Maintainers are volunteers
-- **Search First**: Check existing discussions and issues
-
-## 🏆 Recognition
-
-Contributors will be recognized in:
-
-- **README.md**: Contributors section
-- **CHANGELOG.md**: Release notes
-- **GitHub**: Contributor graphs and statistics
-
-## 📄 License
-
-By contributing to this project, you agree that your contributions will be licensed under the MIT License.
-
-## 🙏 Thank You
-
-Thank you for contributing to the Shopify Partners SDK! Your efforts help make this project better for everyone in the Shopify developer community.
-
----
-
-**Questions?** Feel free to reach out via [GitHub Discussions](https://github.com/amitray007/shopify-partners-sdk/discussions) or email the [maintainer](mailto:mail@amitray.dev).
+By contributing, you agree to license your work under the MIT License.

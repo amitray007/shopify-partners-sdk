@@ -1,169 +1,58 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+Guidance for agents working in this repository: a synchronous Python client for the Shopify
+Partners GraphQL API (`requests`, Pydantic v2, Python 3.11+).
 
-## Project Overview
+## Commands
 
-This is the **Shopify Partners SDK** - a Python client library for the Shopify Partners API. It provides a simple, intuitive interface to interact with Shopify's Partners GraphQL API with full schema validation and helpful error messages.
-
-**Key Design Philosophy**: The SDK prioritizes simplicity and developer experience over complex abstractions, providing both a simple method-chaining API and comprehensive schema validation.
-
-## Development Commands
-
-### Environment Setup
 ```bash
-# Install dependencies
-poetry install
-
-# Install with all development dependencies
-poetry install --with dev,docs
+poetry install --with dev
+poetry run pytest                      # unit tests, offline (the default run)
+poetry run pytest -m integration --no-cov   # live API; needs SHOPIFY_PARTNERS_LIVE_ORGANIZATION_ID and _ACCESS_TOKEN
+poetry run ruff check src tests && poetry run black --check src tests && poetry run mypy src
 ```
 
-### Code Quality & Linting
-```bash
-# Format code (primary formatter)
-black src/
+CI (`.github/workflows/ci.yml`) runs the same checks on Python 3.11-3.14. mypy runs in strict
+mode and is clean; keep it clean.
 
-# Lint and fix automatically
-ruff --fix src/
+## How a request flows
 
-# Type checking
-mypy src/
+1. `ShopifyPartnersClient` (`src/shopify_partners_sdk/__init__.py`) loads the bundled schema for
+   its API version and owns a `FieldBasedShopifyPartnersClient`.
+2. The field-based client creates an `OperationBuilder` subclass (`queries/custom_builders.py`,
+   `mutations/custom_builders.py`). The builder takes every variable type from the schema and
+   validates the `FieldSelector` tree while rendering (`queries/fields.py`).
+3. `BaseGraphQLClient` (`client/base.py`) serializes variables (`values.py`), applies the rate
+   limiter and retry handler, and maps HTTP and GraphQL errors to SDK exceptions.
 
-# Run all quality checks
-poetry run ruff src/ && poetry run black --check src/ && poetry run mypy src/
-```
+Schema errors raise `SchemaValidationError` (a `ValueError`) before any network call. Keep
+validation schema-driven: look types up in `PartnerSchema`; never infer a GraphQL type from a
+Python value.
 
-### Testing
-```bash
-# Run all tests
-poetry run pytest
+## Bundled schema: the single source of truth
 
-# Run tests with coverage
-poetry run pytest --cov=shopify_partners_sdk
+- Raw introspection: `schema/versions/<version>/introspection.json`.
+- Compact package data: `src/shopify_partners_sdk/schema/data/partner_<version>.json`, generated
+  by `python schema/utils/build_sdk_schema.py`. Never edit the generated files by hand.
+- `SUPPORTED_API_VERSIONS` is read from the data files present. Settings accept only those.
 
-# Run specific test file
-poetry run pytest tests/test_specific.py
+To add or update an API version: save the raw introspection, update `SUPPORTED_VERSIONS` in the
+generator, run it, update `DEFAULT_API_VERSION` in `config/defaults.py`, then run the tests.
+`tests/unit/test_schema.py` fails when generated data drifts from the raw files,
+`test_enums.py` when `models/enums.py` drifts from the schema, and `test_models_schema.py` when a
+model field does not exist in the API. Shopify's `@shopify/dev-mcp` npm package ships official
+Partner API introspection in `dist/data/partner_<version>.json.gz`; that is the source when no
+API token is at hand.
 
-# Run tests by marker
-poetry run pytest -m unit
-poetry run pytest -m integration
-```
+## Release gotcha
 
-## Architecture Overview
+Every push to `main` runs `.github/workflows/release.yml`, which bumps the version, tags, and
+publishes to PyPI. Merging a PR is a release.
 
-### Core Design Pattern: Schema-Driven Validation
+## Conventions
 
-The SDK implements a **two-tier architecture**:
-
-1. **Simple Client Layer** (`__init__.py`): Primary user interface with method chaining
-2. **Schema Validation Layer** (`schema/`): Comprehensive GraphQL schema validation
-
-### Primary Entry Point
-
-The main client class `ShopifyPartnersClient` is defined directly in `__init__.py` for easy importing:
-
-```python
-from shopify_partners_sdk import ShopifyPartnersClient, FieldSelector
-
-client = ShopifyPartnersClient(organization_id="...", access_token="...")
-fields = FieldSelector().add_fields("id", "title", "handle")
-result = client.query("app", fields, id="123")
-```
-
-### Schema System Architecture (`schema/`)
-
-The schema system provides build-time validation and field discovery:
-
-- **`definitions.py`**: Complete GraphQL schema type definitions with all available types and their fields
-- **`registry.py`**: Registry of available queries and mutations with metadata (arguments, pagination support, etc.)
-- **`validators.py`**: Validation logic with intelligent error messages and field suggestions
-
-### Query Building System (`queries/`)
-
-Two query building approaches coexist:
-
-1. **Primary: Schema-Driven Builders** (`builders.py`): Used by the main client, provides full validation
-2. **Legacy: Custom Builders** (`custom_builders.py`): Flexible builders for advanced use cases
-
-### Client Infrastructure (`client/`)
-
-Core GraphQL client components:
-- **`base.py`**: BaseGraphQLClient handles HTTP requests, authentication, and response parsing
-- **`auth.py`**: Authentication validation and credential management
-- **`rate_limiter.py`**: Token bucket rate limiting (4 req/sec) with burst capacity
-- **`retry.py`**: Exponential backoff with jitter for resilience
-
-### Key Design Decisions
-
-#### Modern Python Typing
-The codebase uses Python 3.9+ built-in generics (`dict[str, Any]`, `list[str]`) instead of deprecated `typing.Dict`, `typing.List`. This was systematically applied across the entire codebase.
-
-#### Validation Strategy
-- **Build-time validation**: Field names and query structure validated when building queries
-- **Helpful errors**: Typos get intelligent suggestions (e.g., "Did you mean 'title' instead of 'titel'?")
-- **Schema-aware**: All validation based on actual Shopify Partners API GraphQL schema
-
-#### Client Design Philosophy
-- **Two simple approaches**: Raw GraphQL queries and FieldSelector-based dynamic building
-- **Direct execution**: Methods like `client.query()` build and execute in one step
-- **No complex abstractions**: Avoid overengineering, keep the API intuitive
-
-## Important Development Guidelines
-
-### Typing Standards
-- Always use built-in generics: `dict[str, Any]` not `Dict[str, Any]`
-- Always use built-in generics: `list[str]` not `List[str]`
-- Import only necessary typing constructs: `from typing import Optional, Union`
-
-### Schema Validation Pattern
-When modifying validation logic:
-1. Update schema definitions in `schema/definitions.py` first
-2. Update query/mutation registry in `schema/registry.py` if needed
-3. Validation logic in `schema/validators.py` automatically uses updated definitions
-
-### Query Builder Extensions
-To add new query capabilities:
-1. Add query definition to `QueryRegistry.QUERIES` in `schema/registry.py`
-2. Add field definitions to `GraphQLSchema.TYPES` in `schema/definitions.py`
-3. Validation and error handling automatically work
-
-## File Structure Notes
-
-### Main Package (`src/shopify_partners_sdk/`)
-- **`__init__.py`**: Contains the main `ShopifyPartnersClient` class (not just exports)
-- **`version.py`**: Simple version string
-- **`py.typed`**: Indicates this is a typed package
-
-### Core Components
-- **`client/field_based_client.py`**: Internal field-based client (used by main client)
-- **`queries/custom_builders.py`**: Custom query builders for FieldSelector system
-- **`mutations/custom_builders.py`**: Custom mutation builders for FieldSelector system
-
-These components power the FieldSelector approach and are used internally by the main client.
-
-### Examples and Documentation
-- **`examples/`**: Real-world usage examples (revenue analytics, app lifecycle tracking, etc.)
-- **`docs/`**: API research, schema analysis, and introspection documentation
-- **`schema/`**: GraphQL schema analysis and version comparison tools
-
-## Testing Strategy
-
-The project uses pytest with specific markers:
-- `@pytest.mark.unit`: Fast unit tests
-- `@pytest.mark.integration`: Tests requiring API access
-- `@pytest.mark.slow`: Long-running tests
-
-Coverage target is maintained through pytest-cov with HTML reports.
-
-## GraphQL Schema Maintenance
-
-The project includes a specialized Claude Code agent (`graphql-schema-documenter`) for maintaining GraphQL schema documentation from introspection data. Use the Task tool with `subagent_type: "graphql-schema-documenter"` when schema updates are needed.
-
-## Development Environment
-
-- **Python 3.9+** (uses modern typing features)
-- **Poetry** for dependency management
-- **Async/await** throughout (requires asyncio-compatible testing)
-- **Pydantic v2** for data validation
-- **httpx** for HTTP client (async-first)
+- Built-in generics and `X | None` annotations.
+- Tests: `pytestmark = pytest.mark.unit` per module, the scripted `FakeSession` from
+  `tests/conftest.py` for HTTP, and expected values written as literals.
+- `docs/` and `schema/analysis/` hold older research notes; the bundled schema wins when they
+  disagree.
